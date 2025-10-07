@@ -1,0 +1,377 @@
+# 检验相关事件定义
+# 基于MES系统全局架构基础文档
+
+version: "1.0"
+namespace: "mes.events.inspection"
+description: "品质检验相关事件定义"
+
+events:
+  InspectionCreated:
+    event_id: "insp.created"
+    description: "检验单创建事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+          description: "事件唯一标识"
+        event_type:
+          type: "string"
+          enum: ["InspectionCreated"]
+        aggregate_id:
+          type: "string"
+          description: "检验单ID (INSP-{type}-YYYYMMDD-SEQ)"
+        aggregate_type:
+          type: "string"
+          enum: ["Inspection"]
+        event_time:
+          type: "string"
+          format: "date-time"
+          description: "事件发生时间"
+        version:
+          type: "integer"
+          description: "事件版本号"
+        data:
+          type: "object"
+          properties:
+            insp_id:
+              type: "string"
+              description: "检验单号"
+            type:
+              type: "string"
+              enum: ["IQC", "IPQC", "OQC", "FAI"]
+              description: "检验类型"
+            ref_id:
+              type: "string"
+              description: "关联单据ID"
+            ref_type:
+              type: "string"
+              enum: ["GRN", "LOT", "WO", "BOX", "SN"]
+              description: "关联单据类型"
+            sample_size:
+              type: "integer"
+              description: "抽样数量"
+            aql_level:
+              type: "string"
+              description: "AQL等级"
+            inspector:
+              type: "string"
+              description: "检验员"
+            inspection_date:
+              type: "string"
+              format: "date-time"
+              description: "检验日期"
+            tenant_id:
+              type: "string"
+              description: "租户ID"
+            created_by:
+              type: "string"
+              description: "创建人"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+              description: "关联ID"
+            causation_id:
+              type: "string"
+              description: "原因事件ID"
+            source_system:
+              type: "string"
+              description: "来源系统"
+            trace_id:
+              type: "string"
+              description: "链路追踪ID"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  InspectionStarted:
+    event_id: "insp.started"
+    description: "检验开始事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["InspectionStarted"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["Inspection"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            insp_id:
+              type: "string"
+            started_by:
+              type: "string"
+              description: "开始检验人"
+            started_at:
+              type: "string"
+              format: "date-time"
+              description: "开始检验时间"
+            station_id:
+              type: "string"
+              description: "检验工位ID"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  InspectionCompleted:
+    event_id: "insp.completed"
+    description: "检验完成事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["InspectionCompleted"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["Inspection"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            insp_id:
+              type: "string"
+            result:
+              type: "string"
+              enum: ["PASS", "FAIL", "SPECIAL"]
+              description: "检验结果"
+            defect_quantity:
+              type: "integer"
+              description: "缺陷数量"
+            completed_by:
+              type: "string"
+              description: "完成检验人"
+            completed_at:
+              type: "string"
+              format: "date-time"
+              description: "完成检验时间"
+            inspection_items:
+              type: "array"
+              description: "检验明细"
+              items:
+                type: "object"
+                properties:
+                  item_key:
+                    type: "string"
+                    description: "检验项目"
+                  actual_value:
+                    type: "string"
+                    description: "实际值"
+                  result:
+                    type: "string"
+                    enum: ["PASS", "FAIL", "SPECIAL"]
+                    description: "单项结果"
+                  defect_code:
+                    type: "string"
+                    description: "缺陷代码"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  InspectionFailed:
+    event_id: "insp.failed"
+    description: "检验失败事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["InspectionFailed"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["Inspection"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            insp_id:
+              type: "string"
+            failure_reason:
+              type: "string"
+              description: "失败原因"
+            defect_summary:
+              type: "object"
+              description: "缺陷汇总"
+              properties:
+                total_defects:
+                  type: "integer"
+                  description: "总缺陷数"
+                major_defects:
+                  type: "integer"
+                  description: "主要缺陷数"
+                minor_defects:
+                  type: "integer"
+                  description: "次要缺陷数"
+                defect_codes:
+                  type: "array"
+                  description: "缺陷代码列表"
+                  items:
+                    type: "object"
+                    properties:
+                      code:
+                        type: "string"
+                      count:
+                        type: "integer"
+            failed_by:
+              type: "string"
+              description: "检验失败记录人"
+            failed_at:
+              type: "string"
+              format: "date-time"
+              description: "检验失败时间"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  NCRCreated:
+    event_id: "ncr.created"
+    description: "不合格报告创建事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["NCRCreated"]
+        aggregate_id:
+          type: "string"
+          description: "NCR ID"
+        aggregate_type:
+          type: "string"
+          enum: ["NCR"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            ncr_id:
+              type: "string"
+              description: "NCR编号"
+            insp_id:
+              type: "string"
+              description: "关联检验单ID"
+            severity:
+              type: "string"
+              enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+              description: "严重程度"
+            category:
+              type: "string"
+              description: "问题分类"
+            description:
+              type: "string"
+              description: "问题描述"
+            affected_items:
+              type: "array"
+              description: "影响物料"
+              items:
+                type: "string"
+            created_by:
+              type: "string"
+              description: "创建人"
+            assigned_to:
+              type: "string"
+              description: "责任人"
+            due_date:
+              type: "string"
+              format: "date-time"
+              description: "截止日期"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+# 事件流定义
+event_flows:
+  InspectionLifecycle:
+    description: "检验生命周期事件流"
+    events:
+      - "InspectionCreated"
+      - "InspectionStarted"
+      - "InspectionCompleted"
+    alternative_endings:
+      - "InspectionFailed"
+
+  QualityIssueFlow:
+    description: "质量问题处理流程"
+    events:
+      - "InspectionFailed"
+      - "NCRCreated"
+    triggers:
+      - condition: "result = 'FAIL'"
+        action: "create_ncr"
+
+# 事件发布策略
+publishing:
+  strategy: "immediate"
+  retry_policy:
+    max_retries: 3
+    backoff_multiplier: 2
+    initial_delay_ms: 1000
+  dead_letter_queue: true
+  quality_gates:
+    - name: "defect_threshold"
+      condition: "defect_quantity > threshold"
+      action: "escalate"

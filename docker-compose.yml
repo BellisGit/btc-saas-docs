@@ -1,0 +1,263 @@
+# MES系统Docker Compose配置
+# 基于MES系统全局架构基础文档
+
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: mes-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123456}
+      MYSQL_DATABASE: mes_core
+      MYSQL_USER: mes_app
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-mes123456}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mes-backend/database/schemas:/docker-entrypoint-initdb.d
+      - ./mysql/conf.d:/etc/mysql/conf.d
+    networks:
+      - mes-network
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=1G
+      --max-connections=200
+      --slow-query-log=1
+      --long-query-time=2
+
+  # Redis缓存
+  redis:
+    image: redis:6.0-alpine
+    container_name: mes-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - mes-network
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-redis123456}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+
+  # 后端API服务
+  mes-backend:
+    build:
+      context: ./mes-backend
+      dockerfile: Dockerfile
+    container_name: mes-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: mes_core
+      DB_USER: mes_app
+      DB_PASSWORD: ${MYSQL_PASSWORD:-mes123456}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123456}
+      JWT_SECRET: ${JWT_SECRET:-mes_jwt_secret_key}
+      LOG_LEVEL: info
+    volumes:
+      - ./mes-backend/logs:/app/logs
+      - ./mes-backend/uploads:/app/uploads
+    networks:
+      - mes-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 前端应用
+  mes-frontend:
+    build:
+      context: ./mes-frontend
+      dockerfile: Dockerfile
+    container_name: mes-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      - ./mes-frontend/dist:/usr/share/nginx/html
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - mes-network
+    depends_on:
+      - mes-backend
+
+  # BI仪表板
+  mes-bi:
+    build:
+      context: ./mes-bi
+      dockerfile: Dockerfile
+    container_name: mes-bi
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    volumes:
+      - ./mes-bi/dist:/usr/share/nginx/html
+    networks:
+      - mes-network
+    depends_on:
+      - mes-backend
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:1.20-alpine
+    container_name: mes-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/logs:/var/log/nginx
+    networks:
+      - mes-network
+    depends_on:
+      - mes-frontend
+      - mes-bi
+      - mes-backend
+
+  # Prometheus监控
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mes-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - mes-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+  # Grafana仪表板
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mes-grafana
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - mes-network
+    depends_on:
+      - prometheus
+
+  # 数据库迁移工具
+  flyway:
+    image: flyway/flyway:latest
+    container_name: mes-flyway
+    restart: "no"
+    volumes:
+      - ./mes-backend/database/migrations:/flyway/sql
+      - ./mes-backend/database/flyway.conf:/flyway/conf/flyway.conf
+    networks:
+      - mes-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    command: migrate
+
+  # 日志收集
+  filebeat:
+    image: elastic/filebeat:7.15.0
+    container_name: mes-filebeat
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./mes-backend/logs:/var/log/mes-backend:ro
+      - ./mes-frontend/logs:/var/log/mes-frontend:ro
+      - ./monitoring/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - mes-network
+    depends_on:
+      - mes-backend
+
+  # Elasticsearch (可选)
+  elasticsearch:
+    image: elasticsearch:7.15.0
+    container_name: mes-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - mes-network
+
+  # Kibana (可选)
+  kibana:
+    image: kibana:7.15.0
+    container_name: mes-kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    networks:
+      - mes-network
+    depends_on:
+      - elasticsearch
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+
+networks:
+  mes-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

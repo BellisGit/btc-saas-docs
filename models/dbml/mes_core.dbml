@@ -1,0 +1,188 @@
+Project mes_core {
+  database_type: "PostgreSQL"
+}
+
+Table plants {
+  plant_id uuid [pk]
+  code varchar(32) [not null, unique]
+  name varchar(128) [not null]
+  timezone varchar(64) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table work_centers {
+  work_center_id uuid [pk]
+  plant_id uuid [ref: > plants.plant_id]
+  code varchar(32) [not null]
+  name varchar(128) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (plant_id, code) [unique]
+  }
+}
+
+Table workstations {
+  workstation_id uuid [pk]
+  work_center_id uuid [ref: > work_centers.work_center_id]
+  code varchar(32) [not null]
+  name varchar(128) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (work_center_id, code) [unique]
+  }
+}
+
+Table equipment {
+  equipment_id uuid [pk]
+  workstation_id uuid [ref: > workstations.workstation_id]
+  code varchar(32) [not null]
+  name varchar(128) [not null]
+  type varchar(64)
+  serial_no varchar(64)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (workstation_id, code) [unique]
+  }
+}
+
+Table sensors {
+  sensor_id uuid [pk]
+  equipment_id uuid [ref: > equipment.equipment_id]
+  code varchar(32) [not null]
+  name varchar(128) [not null]
+  unit varchar(16)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (equipment_id, code) [unique]
+  }
+}
+
+Table uoms {
+  uom_id uuid [pk]
+  code varchar(16) [not null, unique]
+  name varchar(64) [not null]
+  base_code varchar(16) [not null]
+  factor_to_base decimal(18,6) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table materials {
+  material_id uuid [pk]
+  code varchar(64) [not null, unique]
+  name varchar(256) [not null]
+  base_uom_id uuid [ref: > uoms.uom_id]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table locations {
+  location_id uuid [pk]
+  plant_id uuid [ref: > plants.plant_id]
+  code varchar(64) [not null]
+  name varchar(256) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (plant_id, code) [unique]
+  }
+}
+
+Table lots {
+  lot_id uuid [pk]
+  material_id uuid [ref: > materials.material_id]
+  code varchar(64) [not null]
+  mfg_date date
+  expiry_date date
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (material_id, code) [unique]
+  }
+}
+
+Table inventory {
+  inventory_id uuid [pk]
+  material_id uuid [ref: > materials.material_id]
+  location_id uuid [ref: > locations.location_id]
+  lot_id uuid [ref: > lots.lot_id]
+  qty_on_hand decimal(18,6)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (material_id, location_id, lot_id) [unique]
+  }
+}
+
+Table employees {
+  employee_id uuid [pk]
+  code varchar(32) [not null, unique]
+  name varchar(128) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table skills {
+  skill_id uuid [pk]
+  code varchar(32) [not null, unique]
+  name varchar(128) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table employee_skills {
+  employee_skill_id uuid [pk]
+  employee_id uuid [ref: > employees.employee_id]
+  skill_id uuid [ref: > skills.skill_id]
+  valid_from timestamptz
+  valid_to timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table shifts {
+  shift_id uuid [pk]
+  plant_id uuid [ref: > plants.plant_id]
+  code varchar(32) [not null]
+  name varchar(128) [not null]
+  start_time time [not null]
+  end_time time [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table calendars {
+  calendar_id uuid [pk]
+  plant_id uuid [ref: > plants.plant_id]
+  date date [not null]
+  is_working_day bool [not null]
+  remarks varchar(256)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  indexes {
+    (plant_id, date) [unique]
+  }
+}
+
+Table quality_codes {
+  quality_code_id uuid [pk]
+  code varchar(32) [not null, unique]
+  name varchar(128) [not null]
+  category varchar(64)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table downtime_codes {
+  downtime_code_id uuid [pk]
+  code varchar(32) [not null, unique]
+  name varchar(128) [not null]
+  category varchar(64)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}

@@ -1,0 +1,596 @@
+# API Schema 定义
+# 基于MES系统全局架构基础文档
+
+version: "1.0"
+namespace: "mes.api.schemas"
+description: "MES系统API接口Schema定义"
+
+schemas:
+  # 统一响应格式
+  ApiResponse:
+    type: "object"
+    properties:
+      code:
+        type: "integer"
+        description: "响应码"
+        example: 200
+      message:
+        type: "string"
+        description: "响应消息"
+        example: "success"
+      data:
+        type: "object"
+        description: "响应数据"
+      timestamp:
+        type: "string"
+        format: "date-time"
+        description: "响应时间戳"
+        example: "2025-01-07T10:30:00Z"
+      traceId:
+        type: "string"
+        description: "链路追踪ID"
+        example: "trace-123456"
+    required: ["code", "message", "timestamp"]
+
+  # 分页响应格式
+  PagedResponse:
+    allOf:
+      - $ref: "#/schemas/ApiResponse"
+      - type: "object"
+        properties:
+          data:
+            type: "object"
+            properties:
+              items:
+                type: "array"
+                description: "数据列表"
+                items:
+                  type: "object"
+              pagination:
+                type: "object"
+                properties:
+                  page:
+                    type: "integer"
+                    description: "当前页码"
+                    example: 1
+                  size:
+                    type: "integer"
+                    description: "每页大小"
+                    example: 20
+                  total:
+                    type: "integer"
+                    description: "总记录数"
+                    example: 100
+                  pages:
+                    type: "integer"
+                    description: "总页数"
+                    example: 5
+                required: ["page", "size", "total", "pages"]
+            required: ["items", "pagination"]
+
+  # 错误响应格式
+  ErrorResponse:
+    allOf:
+      - $ref: "#/schemas/ApiResponse"
+      - type: "object"
+        properties:
+          code:
+            type: "integer"
+            example: 400
+          message:
+            type: "string"
+            example: "参数错误"
+          errors:
+            type: "array"
+            description: "错误详情列表"
+            items:
+              type: "object"
+              properties:
+                field:
+                  type: "string"
+                  description: "错误字段"
+                  example: "itemId"
+                message:
+                  type: "string"
+                  description: "错误消息"
+                  example: "物料ID不能为空"
+              required: ["field", "message"]
+
+  # 工单相关Schema
+  WorkOrderRequest:
+    type: "object"
+    properties:
+      item_id:
+        type: "string"
+        description: "生产物料ID"
+        example: "ITM-202501-0001"
+      planned_quantity:
+        type: "number"
+        format: "decimal"
+        description: "计划数量"
+        example: 1000
+      line_id:
+        type: "string"
+        description: "产线ID"
+        example: "L1"
+      priority:
+        type: "string"
+        enum: ["LOW", "NORMAL", "HIGH", "URGENT"]
+        description: "优先级"
+        example: "NORMAL"
+      planned_start_date:
+        type: "string"
+        format: "date-time"
+        description: "计划开始时间"
+        example: "2025-01-07T08:00:00Z"
+      planned_end_date:
+        type: "string"
+        format: "date-time"
+        description: "计划结束时间"
+        example: "2025-01-07T18:00:00Z"
+      routing_id:
+        type: "string"
+        description: "工艺路线ID"
+        example: "ROUTING-001"
+      remarks:
+        type: "string"
+        description: "备注"
+        example: "紧急订单"
+    required: ["item_id", "planned_quantity", "line_id"]
+
+  WorkOrderResponse:
+    allOf:
+      - $ref: "#/schemas/ApiResponse"
+      - type: "object"
+        properties:
+          data:
+            type: "object"
+            properties:
+              wo_id:
+                type: "string"
+                description: "工单号"
+                example: "WO-L1-0001"
+              wo_no:
+                type: "string"
+                description: "工单编号"
+                example: "WO202501070001"
+              item_id:
+                type: "string"
+                description: "生产物料ID"
+              planned_quantity:
+                type: "number"
+                format: "decimal"
+                description: "计划数量"
+              actual_quantity:
+                type: "number"
+                format: "decimal"
+                description: "实际数量"
+              line_id:
+                type: "string"
+                description: "产线ID"
+              priority:
+                type: "string"
+                enum: ["LOW", "NORMAL", "HIGH", "URGENT"]
+                description: "优先级"
+              status:
+                type: "string"
+                enum: ["DRAFT", "RELEASED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "ON_HOLD"]
+                description: "状态"
+              planned_start_date:
+                type: "string"
+                format: "date-time"
+                description: "计划开始时间"
+              planned_end_date:
+                type: "string"
+                format: "date-time"
+                description: "计划结束时间"
+              actual_start_date:
+                type: "string"
+                format: "date-time"
+                description: "实际开始时间"
+              actual_end_date:
+                type: "string"
+                format: "date-time"
+                description: "实际结束时间"
+              routing_id:
+                type: "string"
+                description: "工艺路线ID"
+              remarks:
+                type: "string"
+                description: "备注"
+              tenant_id:
+                type: "string"
+                description: "租户ID"
+              created_by:
+                type: "string"
+                description: "创建人"
+              created_at:
+                type: "string"
+                format: "date-time"
+                description: "创建时间"
+              updated_by:
+                type: "string"
+                description: "更新人"
+              updated_at:
+                type: "string"
+                format: "date-time"
+                description: "更新时间"
+
+  # 检验相关Schema
+  InspectionRequest:
+    type: "object"
+    properties:
+      type:
+        type: "string"
+        enum: ["IQC", "IPQC", "OQC", "FAI"]
+        description: "检验类型"
+        example: "IQC"
+      ref_id:
+        type: "string"
+        description: "关联单据ID"
+        example: "GRN-20250107-001"
+      ref_type:
+        type: "string"
+        enum: ["GRN", "LOT", "WO", "BOX", "SN"]
+        description: "关联单据类型"
+        example: "GRN"
+      sample_size:
+        type: "integer"
+        description: "抽样数量"
+        example: 50
+      aql_level:
+        type: "string"
+        description: "AQL等级"
+        example: "2.5"
+      inspector:
+        type: "string"
+        description: "检验员"
+        example: "INSP001"
+      inspection_date:
+        type: "string"
+        format: "date-time"
+        description: "检验日期"
+        example: "2025-01-07T10:00:00Z"
+      remarks:
+        type: "string"
+        description: "备注"
+        example: "正常检验"
+    required: ["type", "ref_id", "ref_type", "inspector"]
+
+  InspectionItemRequest:
+    type: "object"
+    properties:
+      item_key:
+        type: "string"
+        description: "检验项目"
+        example: "外观检查"
+      item_name:
+        type: "string"
+        description: "检验项目名称"
+        example: "外观检查"
+      standard_value:
+        type: "string"
+        description: "标准值"
+        example: "无划痕、无变形"
+      actual_value:
+        type: "string"
+        description: "实际值"
+        example: "无划痕、无变形"
+      unit:
+        type: "string"
+        description: "单位"
+        example: "个"
+      result:
+        type: "string"
+        enum: ["PASS", "FAIL", "SPECIAL"]
+        description: "单项结果"
+        example: "PASS"
+      defect_code:
+        type: "string"
+        description: "缺陷代码"
+        example: "DEF001"
+      cause_code:
+        type: "string"
+        description: "原因代码"
+        example: "CAUSE001"
+      action_code:
+        type: "string"
+        description: "处置代码"
+        example: "ACTION001"
+      remarks:
+        type: "string"
+        description: "备注"
+        example: "合格"
+    required: ["item_key", "result"]
+
+  # 追溯相关Schema
+  TraceRequest:
+    type: "object"
+    properties:
+      sn:
+        type: "string"
+        description: "序列号"
+        example: "SN-LOT-20250107-001-0001"
+      lot_id:
+        type: "string"
+        description: "批次号"
+        example: "LOT-20250107-001"
+      box_no:
+        type: "string"
+        description: "箱号"
+        example: "BOX-20250107-001"
+      pallet_no:
+        type: "string"
+        description: "托盘号"
+        example: "PLT-20250107-001"
+    oneOf:
+      - required: ["sn"]
+      - required: ["lot_id"]
+      - required: ["box_no"]
+      - required: ["pallet_no"]
+
+  TraceResponse:
+    allOf:
+      - $ref: "#/schemas/ApiResponse"
+      - type: "object"
+        properties:
+          data:
+            type: "object"
+            properties:
+              sn:
+                type: "string"
+                description: "序列号"
+              lot:
+                type: "string"
+                description: "批次号"
+              wo:
+                type: "string"
+                description: "工单号"
+              operations:
+                type: "array"
+                description: "工序记录"
+                items:
+                  type: "object"
+                  properties:
+                    op_name:
+                      type: "string"
+                      description: "工序名称"
+                    start:
+                      type: "string"
+                      format: "date-time"
+                      description: "开始时间"
+                    end:
+                      type: "string"
+                      format: "date-time"
+                      description: "结束时间"
+                    operator:
+                      type: "string"
+                      description: "操作员"
+                    result:
+                      type: "string"
+                      enum: ["PASS", "FAIL", "REWORK", "HOLD"]
+                      description: "结果"
+              materials:
+                type: "array"
+                description: "用料记录"
+                items:
+                  type: "object"
+                  properties:
+                    item_id:
+                      type: "string"
+                      description: "物料ID"
+                    supplier_id:
+                      type: "string"
+                      description: "供应商ID"
+                    grn_id:
+                      type: "string"
+                      description: "收货单ID"
+                    qty_used:
+                      type: "number"
+                      format: "decimal"
+                      description: "使用数量"
+              quality:
+                type: "object"
+                properties:
+                  iqc:
+                    type: "string"
+                    enum: ["PASS", "FAIL", "SPECIAL"]
+                    description: "IQC结果"
+                  oqc:
+                    type: "string"
+                    enum: ["PASS", "FAIL", "SPECIAL"]
+                    description: "OQC结果"
+                  defect_top:
+                    type: "array"
+                    description: "Top缺陷"
+                    items:
+                      type: "object"
+                      properties:
+                        code:
+                          type: "string"
+                          description: "缺陷代码"
+                        cnt:
+                          type: "integer"
+                          description: "数量"
+              shipping:
+                type: "object"
+                properties:
+                  box_no:
+                    type: "string"
+                    description: "箱号"
+                  pallet_no:
+                    type: "string"
+                    description: "托盘号"
+                  shipment_id:
+                    type: "string"
+                    description: "出货单ID"
+
+  # 库存相关Schema
+  StockMoveRequest:
+    type: "object"
+    properties:
+      item_id:
+        type: "string"
+        description: "物料ID"
+        example: "ITM-202501-0001"
+      lot_id:
+        type: "string"
+        description: "批次号"
+        example: "LOT-20250107-001"
+      from_location_id:
+        type: "string"
+        description: "源库位ID"
+        example: "LOC-001"
+      to_location_id:
+        type: "string"
+        description: "目标库位ID"
+        example: "LOC-002"
+      quantity:
+        type: "number"
+        format: "decimal"
+        description: "移动数量"
+        example: 100
+      reference_type:
+        type: "string"
+        description: "关联单据类型"
+        example: "WO"
+      reference_id:
+        type: "string"
+        description: "关联单据ID"
+        example: "WO-L1-0001"
+      remarks:
+        type: "string"
+        description: "备注"
+        example: "生产领料"
+    required: ["item_id", "from_location_id", "to_location_id", "quantity"]
+
+# API端点定义
+endpoints:
+  work_orders:
+    base_path: "/api/work-orders"
+    operations:
+      - method: "GET"
+        path: "/"
+        summary: "获取工单列表"
+        parameters:
+          - name: "page"
+            in: "query"
+            schema:
+              type: "integer"
+              default: 1
+          - name: "size"
+            in: "query"
+            schema:
+              type: "integer"
+              default: 20
+          - name: "status"
+            in: "query"
+            schema:
+              type: "string"
+              enum: ["DRAFT", "RELEASED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "ON_HOLD"]
+        responses:
+          "200":
+            description: "成功"
+            content:
+              application/json:
+                schema:
+                  $ref: "#/schemas/PagedResponse"
+      - method: "POST"
+        path: "/"
+        summary: "创建工单"
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/schemas/WorkOrderRequest"
+        responses:
+          "201":
+            description: "创建成功"
+            content:
+              application/json:
+                schema:
+                  $ref: "#/schemas/WorkOrderResponse"
+      - method: "GET"
+        path: "/{wo_id}"
+        summary: "获取工单详情"
+        parameters:
+          - name: "wo_id"
+            in: "path"
+            required: true
+            schema:
+              type: "string"
+        responses:
+          "200":
+            description: "成功"
+            content:
+              application/json:
+                schema:
+                  $ref: "#/schemas/WorkOrderResponse"
+
+  inspections:
+    base_path: "/api/inspections"
+    operations:
+      - method: "POST"
+        path: "/"
+        summary: "创建检验单"
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/schemas/InspectionRequest"
+        responses:
+          "201":
+            description: "创建成功"
+            content:
+              application/json:
+                schema:
+                  $ref: "#/schemas/ApiResponse"
+
+  trace:
+    base_path: "/api/trace"
+    operations:
+      - method: "GET"
+        path: "/reverse"
+        summary: "反向追溯"
+        parameters:
+          - name: "sn"
+            in: "query"
+            schema:
+              type: "string"
+          - name: "lot_id"
+            in: "query"
+            schema:
+              type: "string"
+          - name: "box_no"
+            in: "query"
+            schema:
+              type: "string"
+        responses:
+          "200":
+            description: "成功"
+            content:
+              application/json:
+                schema:
+                  $ref: "#/schemas/TraceResponse"
+
+  stock:
+    base_path: "/api/stock"
+    operations:
+      - method: "POST"
+        path: "/move"
+        summary: "库存移库"
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/schemas/StockMoveRequest"
+        responses:
+          "200":
+            description: "成功"
+            content:
+              application/json:
+                schema:
+                  $ref: "#/schemas/ApiResponse"

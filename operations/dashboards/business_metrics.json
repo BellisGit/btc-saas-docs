@@ -1,0 +1,496 @@
+{
+  "dashboard": {
+    "id": "business_metrics",
+    "title": "业务指标监控面板",
+    "description": "MES系统业务关键指标监控",
+    "version": "1.0",
+    "refresh_interval": 60,
+    "time_range": "24h",
+    "panels": [
+      {
+        "id": "production_yield",
+        "title": "生产良率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg(agg_yield_5m{yield})",
+            "legendFormat": "综合良率",
+            "refId": "A"
+          },
+          {
+            "expr": "avg(agg_yield_5m{yield} by (station))",
+            "legendFormat": "{{station}}",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "百分比",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 95,
+            "colorMode": "critical",
+            "op": "lt"
+          },
+          {
+            "value": 98,
+            "colorMode": "warning",
+            "op": "lt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "wip_status",
+        "title": "WIP状态分布",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum(agg_wip_status{quantity} by (status))",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": "work_order_completion",
+        "title": "工单完成情况",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "count(work_order{status=\"COMPLETED\"})",
+            "legendFormat": "已完成",
+            "refId": "A"
+          },
+          {
+            "expr": "count(work_order{status=\"IN_PROGRESS\"})",
+            "legendFormat": "进行中",
+            "refId": "B"
+          },
+          {
+            "expr": "count(work_order{status=\"DRAFT\"})",
+            "legendFormat": "草稿",
+            "refId": "C"
+          },
+          {
+            "expr": "count(work_order{status=\"CANCELLED\"})",
+            "legendFormat": "已取消",
+            "refId": "D"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "数量",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": "inspection_pass_rate",
+        "title": "检验通过率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(inspection{result=\"PASS\"}[5m]) / rate(inspection[5m]) * 100",
+            "legendFormat": "{{type}}",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "百分比",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 95,
+            "colorMode": "critical",
+            "op": "lt"
+          },
+          {
+            "value": 98,
+            "colorMode": "warning",
+            "op": "lt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": "equipment_efficiency",
+        "title": "设备效率",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(agg_equipment_efficiency{efficiency})",
+            "legendFormat": "平均效率",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "green",
+                  "value": 85
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": "daily_production",
+        "title": "日产量",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(work_order{status=\"COMPLETED\"} * planned_quantity)",
+            "legendFormat": "今日产量",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 16
+        }
+      },
+      {
+        "id": "inventory_turnover",
+        "title": "库存周转率",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(agg_inventory_turnover{turnover_rate})",
+            "legendFormat": "平均周转率",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "decimals": 2,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 2
+                },
+                {
+                  "color": "green",
+                  "value": 4
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": "supplier_performance",
+        "title": "供应商绩效",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(agg_supplier_performance{overall_score})",
+            "legendFormat": "平均评分",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "decimals": 1,
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 70
+                },
+                {
+                  "color": "green",
+                  "value": 85
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 16
+        }
+      },
+      {
+        "id": "defect_trend",
+        "title": "缺陷趋势",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(inspection_item{result=\"FAIL\"}[5m])",
+            "legendFormat": "缺陷率",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "缺陷/秒",
+            "min": 0
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 0.1,
+            "colorMode": "critical",
+            "op": "gt"
+          },
+          {
+            "value": 0.05,
+            "colorMode": "warning",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 20
+        }
+      },
+      {
+        "id": "cost_variance",
+        "title": "成本差异",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "avg(agg_cost_analysis{cost_variance})",
+            "legendFormat": "成本差异",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "金额",
+            "min": 0
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 10000,
+            "colorMode": "critical",
+            "op": "gt"
+          },
+          {
+            "value": 5000,
+            "colorMode": "warning",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 20
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "业务事件",
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "business_events",
+          "iconColor": "green"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "line",
+          "type": "query",
+          "query": "label_values(work_order, line_id)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "station",
+          "type": "query",
+          "query": "label_values(agg_yield_5m, station)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    }
+  },
+  "alerts": [
+    {
+      "name": "Production Yield Low",
+      "condition": "avg(agg_yield_5m{yield}) < 95",
+      "severity": "critical",
+      "message": "生产良率低于95%",
+      "actions": ["email", "sms", "webhook"]
+    },
+    {
+      "name": "Inspection Pass Rate Low",
+      "condition": "rate(inspection{result=\"PASS\"}[5m]) / rate(inspection[5m]) < 0.95",
+      "severity": "warning",
+      "message": "检验通过率低于95%",
+      "actions": ["email"]
+    },
+    {
+      "name": "Equipment Efficiency Low",
+      "condition": "avg(agg_equipment_efficiency{efficiency}) < 70",
+      "severity": "warning",
+      "message": "设备效率低于70%",
+      "actions": ["email"]
+    },
+    {
+      "name": "High Defect Rate",
+      "condition": "rate(inspection_item{result=\"FAIL\"}[5m]) > 0.1",
+      "severity": "critical",
+      "message": "缺陷率过高",
+      "actions": ["email", "sms", "webhook"]
+    },
+    {
+      "name": "Cost Variance High",
+      "condition": "avg(agg_cost_analysis{cost_variance}) > 10000",
+      "severity": "warning",
+      "message": "成本差异过大",
+      "actions": ["email"]
+    },
+    {
+      "name": "Low Inventory Turnover",
+      "condition": "avg(agg_inventory_turnover{turnover_rate}) < 2",
+      "severity": "warning",
+      "message": "库存周转率过低",
+      "actions": ["email"]
+    },
+    {
+      "name": "Supplier Performance Low",
+      "condition": "avg(agg_supplier_performance{overall_score}) < 70",
+      "severity": "warning",
+      "message": "供应商绩效评分过低",
+      "actions": ["email"]
+    }
+  ],
+  "kpis": [
+    {
+      "name": "OEE",
+      "description": "设备综合效率",
+      "formula": "availability × performance × quality",
+      "target": 85,
+      "current": 0,
+      "unit": "%"
+    },
+    {
+      "name": "FTT",
+      "description": "首次通过率",
+      "formula": "first_pass_count / total_count",
+      "target": 95,
+      "current": 0,
+      "unit": "%"
+    },
+    {
+      "name": "OTD",
+      "description": "准时交付率",
+      "formula": "on_time_deliveries / total_deliveries",
+      "target": 98,
+      "current": 0,
+      "unit": "%"
+    },
+    {
+      "name": "Inventory Accuracy",
+      "description": "库存准确率",
+      "formula": "accurate_items / total_items",
+      "target": 99,
+      "current": 0,
+      "unit": "%"
+    }
+  ]
+}

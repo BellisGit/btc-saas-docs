@@ -1,0 +1,179 @@
+version: 0.1
+namespace: mes_core
+entities:
+  Plant:
+    pk: plant_id
+    fields:
+      plant_id: ulid
+      code: string(32)
+      name: string(128)
+      timezone: string(64)
+      created_at: timestamp
+      updated_at: timestamp
+  WorkCenter:
+    pk: work_center_id
+    fields:
+      work_center_id: ulid
+      plant_id: ref(Plant.plant_id)
+      code: string(32)
+      name: string(128)
+      created_at: timestamp
+      updated_at: timestamp
+  Workstation:
+    pk: workstation_id
+    fields:
+      workstation_id: ulid
+      work_center_id: ref(WorkCenter.work_center_id)
+      code: string(32)
+      name: string(128)
+      created_at: timestamp
+      updated_at: timestamp
+  Equipment:
+    pk: equipment_id
+    fields:
+      equipment_id: ulid
+      workstation_id: ref(Workstation.workstation_id)
+      code: string(32)
+      name: string(128)
+      type: string(64)
+      serial_no: string(64)
+      created_at: timestamp
+      updated_at: timestamp
+  Sensor:
+    pk: sensor_id
+    fields:
+      sensor_id: ulid
+      equipment_id: ref(Equipment.equipment_id)
+      code: string(32)
+      name: string(128)
+      unit: string(16)
+      created_at: timestamp
+      updated_at: timestamp
+  UoM:
+    pk: uom_id
+    fields:
+      uom_id: ulid
+      code: string(16)
+      name: string(64)
+      base_code: string(16)
+      factor_to_base: decimal(18,6)
+      created_at: timestamp
+      updated_at: timestamp
+  Material:
+    pk: material_id
+    fields:
+      material_id: ulid
+      code: string(64)
+      name: string(256)
+      base_uom_id: ref(UoM.uom_id)
+      created_at: timestamp
+      updated_at: timestamp
+  Location:
+    pk: location_id
+    fields:
+      location_id: ulid
+      plant_id: ref(Plant.plant_id)
+      code: string(64)
+      name: string(256)
+      created_at: timestamp
+      updated_at: timestamp
+  Lot:
+    pk: lot_id
+    fields:
+      lot_id: ulid
+      material_id: ref(Material.material_id)
+      code: string(64)
+      mfg_date: date
+      expiry_date: date
+      created_at: timestamp
+      updated_at: timestamp
+  Inventory:
+    pk: inventory_id
+    fields:
+      inventory_id: ulid
+      material_id: ref(Material.material_id)
+      location_id: ref(Location.location_id)
+      lot_id: ref(Lot.lot_id, nullable)
+      qty_on_hand: decimal(18,6)
+      created_at: timestamp
+      updated_at: timestamp
+  Employee:
+    pk: employee_id
+    fields:
+      employee_id: ulid
+      code: string(32)
+      name: string(128)
+      created_at: timestamp
+      updated_at: timestamp
+  Skill:
+    pk: skill_id
+    fields:
+      skill_id: ulid
+      code: string(32)
+      name: string(128)
+      created_at: timestamp
+      updated_at: timestamp
+  EmployeeSkill:
+    pk: employee_skill_id
+    fields:
+      employee_skill_id: ulid
+      employee_id: ref(Employee.employee_id)
+      skill_id: ref(Skill.skill_id)
+      valid_from: timestamp
+      valid_to: timestamp
+      created_at: timestamp
+      updated_at: timestamp
+  Shift:
+    pk: shift_id
+    fields:
+      shift_id: ulid
+      plant_id: ref(Plant.plant_id)
+      code: string(32)
+      name: string(128)
+      start_time: time
+      end_time: time
+      created_at: timestamp
+      updated_at: timestamp
+  Calendar:
+    pk: calendar_id
+    fields:
+      calendar_id: ulid
+      plant_id: ref(Plant.plant_id)
+      date: date
+      is_working_day: bool
+      remarks: string(256, nullable)
+      created_at: timestamp
+      updated_at: timestamp
+  QualityCode:
+    pk: quality_code_id
+    fields:
+      quality_code_id: ulid
+      code: string(32)
+      name: string(128)
+      category: string(64)
+      created_at: timestamp
+      updated_at: timestamp
+  DowntimeCode:
+    pk: downtime_code_id
+    fields:
+      downtime_code_id: ulid
+      code: string(32)
+      name: string(128)
+      category: string(64)
+      created_at: timestamp
+      updated_at: timestamp
+constraints:
+  uniques:
+    - on: Plant(code)
+    - on: WorkCenter(plant_id, code)
+    - on: Workstation(work_center_id, code)
+    - on: Equipment(workstation_id, code)
+    - on: Sensor(equipment_id, code)
+    - on: UoM(code)
+    - on: Material(code)
+    - on: Location(plant_id, code)
+    - on: Lot(material_id, code)
+    - on: Employee(code)
+    - on: Skill(code)
+    - on: QualityCode(code)
+    - on: DowntimeCode(code)

@@ -1,0 +1,281 @@
+-- ==============================================
+-- BTC BI数据库 - 生产相关BI聚合表
+-- ==============================================
+
+USE btc_bi;
+
+-- 生产进度聚合表（5分钟级别）
+CREATE TABLE agg_production_progress_5m (
+    bucket_start DATETIME PRIMARY KEY COMMENT '时间桶开始时间',
+    tenant_id VARCHAR(32) COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    wo_id VARCHAR(32) COMMENT '工单ID',
+    item_id VARCHAR(32) COMMENT '物料ID',
+    line_id VARCHAR(32) COMMENT '产线ID',
+    station_id VARCHAR(32) COMMENT '工位ID',
+    planned_qty DECIMAL(18,4) DEFAULT 0 COMMENT '计划数量',
+    completed_qty DECIMAL(18,4) DEFAULT 0 COMMENT '完成数量',
+    in_progress_qty DECIMAL(18,4) DEFAULT 0 COMMENT '在制数量',
+    progress_rate DECIMAL(5,2) DEFAULT 0 COMMENT '进度百分比',
+    efficiency DECIMAL(5,2) DEFAULT 0 COMMENT '效率百分比',
+    cycle_time DECIMAL(8,2) DEFAULT 0 COMMENT '节拍时间(秒)',
+    throughput DECIMAL(10,2) DEFAULT 0 COMMENT '吞吐量(件/小时)',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant_site (tenant_id, site_id),
+    INDEX idx_wo (wo_id),
+    INDEX idx_item (item_id),
+    INDEX idx_line (line_id),
+    INDEX idx_station (station_id),
+    INDEX idx_bucket_start (bucket_start)
+) COMMENT '生产进度聚合表(5分钟)' 
+PARTITION BY RANGE (TO_DAYS(bucket_start)) (
+    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
+    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
+    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
+    PARTITION p202504 VALUES LESS THAN (TO_DAYS('2025-05-01')),
+    PARTITION p202505 VALUES LESS THAN (TO_DAYS('2025-06-01')),
+    PARTITION p202506 VALUES LESS THAN (TO_DAYS('2025-07-01')),
+    PARTITION p202507 VALUES LESS THAN (TO_DAYS('2025-08-01')),
+    PARTITION p202508 VALUES LESS THAN (TO_DAYS('2025-09-01')),
+    PARTITION p202509 VALUES LESS THAN (TO_DAYS('2025-10-01')),
+    PARTITION p202510 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+    PARTITION p202511 VALUES LESS THAN (TO_DAYS('2025-12-01')),
+    PARTITION p202512 VALUES LESS THAN (TO_DAYS('2026-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- WIP状态聚合表（5分钟级别）
+CREATE TABLE agg_wip_status_5m (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    bucket_start DATETIME NOT NULL COMMENT '时间桶开始时间',
+    tenant_id VARCHAR(32) COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    wo_id VARCHAR(32) COMMENT '工单ID',
+    item_id VARCHAR(32) COMMENT '物料ID',
+    line_id VARCHAR(32) COMMENT '产线ID',
+    station_id VARCHAR(32) COMMENT '工位ID',
+    status ENUM('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'REJECTED', 'REWORK', 'HOLD') COMMENT '状态',
+    quantity DECIMAL(18,4) DEFAULT 0 COMMENT '数量',
+    avg_wait_time BIGINT DEFAULT 0 COMMENT '平均等待时间(分钟)',
+    max_wait_time BIGINT DEFAULT 0 COMMENT '最大等待时间(分钟)',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant_site (tenant_id, site_id),
+    INDEX idx_wo (wo_id),
+    INDEX idx_item (item_id),
+    INDEX idx_line (line_id),
+    INDEX idx_station (station_id),
+    INDEX idx_status (status),
+    INDEX idx_bucket_start (bucket_start)
+) COMMENT 'WIP状态聚合表(5分钟)'
+PARTITION BY RANGE (TO_DAYS(bucket_start)) (
+    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
+    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
+    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
+    PARTITION p202504 VALUES LESS THAN (TO_DAYS('2025-05-01')),
+    PARTITION p202505 VALUES LESS THAN (TO_DAYS('2025-06-01')),
+    PARTITION p202506 VALUES LESS THAN (TO_DAYS('2025-07-01')),
+    PARTITION p202507 VALUES LESS THAN (TO_DAYS('2025-08-01')),
+    PARTITION p202508 VALUES LESS THAN (TO_DAYS('2025-09-01')),
+    PARTITION p202509 VALUES LESS THAN (TO_DAYS('2025-10-01')),
+    PARTITION p202510 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+    PARTITION p202511 VALUES LESS THAN (TO_DAYS('2025-12-01')),
+    PARTITION p202512 VALUES LESS THAN (TO_DAYS('2026-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- 库存周转聚合表（小时级别）
+CREATE TABLE agg_inventory_turnover_1h (
+    bucket_start DATETIME PRIMARY KEY COMMENT '时间桶开始时间',
+    tenant_id VARCHAR(32) COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    item_id VARCHAR(32) COMMENT '物料ID',
+    location_id VARCHAR(32) COMMENT '库位ID',
+    warehouse_code VARCHAR(64) COMMENT '仓库代码',
+    beginning_stock DECIMAL(18,4) DEFAULT 0 COMMENT '期初库存',
+    ending_stock DECIMAL(18,4) DEFAULT 0 COMMENT '期末库存',
+    avg_stock DECIMAL(18,4) DEFAULT 0 COMMENT '平均库存',
+    in_qty DECIMAL(18,4) DEFAULT 0 COMMENT '入库数量',
+    out_qty DECIMAL(18,4) DEFAULT 0 COMMENT '出库数量',
+    turnover_rate DECIMAL(8,4) DEFAULT 0 COMMENT '周转率',
+    turnover_days DECIMAL(8,2) DEFAULT 0 COMMENT '周转天数',
+    stock_value DECIMAL(18,2) DEFAULT 0 COMMENT '库存价值',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant_site (tenant_id, site_id),
+    INDEX idx_item (item_id),
+    INDEX idx_location (location_id),
+    INDEX idx_warehouse (warehouse_code),
+    INDEX idx_bucket_start (bucket_start)
+) COMMENT '库存周转聚合表(1小时)'
+PARTITION BY RANGE (TO_DAYS(bucket_start)) (
+    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
+    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
+    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
+    PARTITION p202504 VALUES LESS THAN (TO_DAYS('2025-05-01')),
+    PARTITION p202505 VALUES LESS THAN (TO_DAYS('2025-06-01')),
+    PARTITION p202506 VALUES LESS THAN (TO_DAYS('2025-07-01')),
+    PARTITION p202507 VALUES LESS THAN (TO_DAYS('2025-08-01')),
+    PARTITION p202508 VALUES LESS THAN (TO_DAYS('2025-09-01')),
+    PARTITION p202509 VALUES LESS THAN (TO_DAYS('2025-10-01')),
+    PARTITION p202510 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+    PARTITION p202511 VALUES LESS THAN (TO_DAYS('2025-12-01')),
+    PARTITION p202512 VALUES LESS THAN (TO_DAYS('2026-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- 库存事务聚合表（5分钟级别）
+CREATE TABLE agg_stock_transaction_5m (
+    bucket_start DATETIME PRIMARY KEY COMMENT '时间桶开始时间',
+    tenant_id VARCHAR(32) COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    transaction_type ENUM('IN', 'OUT', 'TRANSFER', 'ADJUST', 'RESERVE', 'UNRESERVE') COMMENT '事务类型',
+    item_id VARCHAR(32) COMMENT '物料ID',
+    location_id VARCHAR(32) COMMENT '库位ID',
+    transaction_count INT DEFAULT 0 COMMENT '事务次数',
+    total_quantity DECIMAL(18,4) DEFAULT 0 COMMENT '总数量',
+    total_value DECIMAL(18,2) DEFAULT 0 COMMENT '总价值',
+    avg_transaction_time DECIMAL(8,2) DEFAULT 0 COMMENT '平均事务时间(分钟)',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant_site (tenant_id, site_id),
+    INDEX idx_transaction_type (transaction_type),
+    INDEX idx_item (item_id),
+    INDEX idx_location (location_id),
+    INDEX idx_bucket_start (bucket_start)
+) COMMENT '库存事务聚合表(5分钟)'
+PARTITION BY RANGE (TO_DAYS(bucket_start)) (
+    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
+    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
+    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
+    PARTITION p202504 VALUES LESS THAN (TO_DAYS('2025-05-01')),
+    PARTITION p202505 VALUES LESS THAN (TO_DAYS('2025-06-01')),
+    PARTITION p202506 VALUES LESS THAN (TO_DAYS('2025-07-01')),
+    PARTITION p202507 VALUES LESS THAN (TO_DAYS('2025-08-01')),
+    PARTITION p202508 VALUES LESS THAN (TO_DAYS('2025-09-01')),
+    PARTITION p202509 VALUES LESS THAN (TO_DAYS('2025-10-01')),
+    PARTITION p202510 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+    PARTITION p202511 VALUES LESS THAN (TO_DAYS('2025-12-01')),
+    PARTITION p202512 VALUES LESS THAN (TO_DAYS('2026-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- 供应商绩效聚合表（日级别）
+CREATE TABLE agg_supplier_performance_1d (
+    bucket_start DATE PRIMARY KEY COMMENT '统计日期',
+    tenant_id VARCHAR(32) COMMENT '租户ID',
+    supplier_id VARCHAR(32) COMMENT '供应商ID',
+    supplier_code VARCHAR(64) COMMENT '供应商代码',
+    supplier_name VARCHAR(255) COMMENT '供应商名称',
+    delivery_score DECIMAL(5,2) DEFAULT 0 COMMENT '交付评分',
+    quality_score DECIMAL(5,2) DEFAULT 0 COMMENT '质量评分',
+    service_score DECIMAL(5,2) DEFAULT 0 COMMENT '服务评分',
+    cost_score DECIMAL(5,2) DEFAULT 0 COMMENT '成本评分',
+    overall_score DECIMAL(5,2) DEFAULT 0 COMMENT '综合评分',
+    on_time_delivery_rate DECIMAL(5,2) DEFAULT 0 COMMENT '准时交付率',
+    quality_pass_rate DECIMAL(5,2) DEFAULT 0 COMMENT '质量通过率',
+    defect_rate DECIMAL(5,2) DEFAULT 0 COMMENT '缺陷率',
+    complaint_count INT DEFAULT 0 COMMENT '投诉次数',
+    ncr_count INT DEFAULT 0 COMMENT 'NCR次数',
+    scar_count INT DEFAULT 0 COMMENT 'SCAR次数',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_supplier (supplier_id),
+    INDEX idx_bucket_start (bucket_start)
+) COMMENT '供应商绩效聚合表(日)'
+PARTITION BY RANGE (TO_DAYS(bucket_start)) (
+    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
+    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
+    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
+    PARTITION p202504 VALUES LESS THAN (TO_DAYS('2025-05-01')),
+    PARTITION p202505 VALUES LESS THAN (TO_DAYS('2025-06-01')),
+    PARTITION p202506 VALUES LESS THAN (TO_DAYS('2025-07-01')),
+    PARTITION p202507 VALUES LESS THAN (TO_DAYS('2025-08-01')),
+    PARTITION p202508 VALUES LESS THAN (TO_DAYS('2025-09-01')),
+    PARTITION p202509 VALUES LESS THAN (TO_DAYS('2025-10-01')),
+    PARTITION p202510 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+    PARTITION p202511 VALUES LESS THAN (TO_DAYS('2025-12-01')),
+    PARTITION p202512 VALUES LESS THAN (TO_DAYS('2026-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- 成本分析聚合表（日级别）
+CREATE TABLE agg_cost_analysis_1d (
+    bucket_start DATE PRIMARY KEY COMMENT '统计日期',
+    tenant_id VARCHAR(32) COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    wo_id VARCHAR(32) COMMENT '工单ID',
+    item_id VARCHAR(32) COMMENT '物料ID',
+    planned_cost DECIMAL(18,2) DEFAULT 0 COMMENT '计划成本',
+    actual_cost DECIMAL(18,2) DEFAULT 0 COMMENT '实际成本',
+    material_cost DECIMAL(18,2) DEFAULT 0 COMMENT '物料成本',
+    labor_cost DECIMAL(18,2) DEFAULT 0 COMMENT '人工成本',
+    overhead_cost DECIMAL(18,2) DEFAULT 0 COMMENT '制造费用',
+    quality_cost DECIMAL(18,2) DEFAULT 0 COMMENT '质量成本',
+    cost_variance DECIMAL(18,2) DEFAULT 0 COMMENT '成本差异',
+    cost_variance_rate DECIMAL(5,2) DEFAULT 0 COMMENT '成本差异率',
+    unit_cost DECIMAL(18,4) DEFAULT 0 COMMENT '单位成本',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant_site (tenant_id, site_id),
+    INDEX idx_wo (wo_id),
+    INDEX idx_item (item_id),
+    INDEX idx_bucket_start (bucket_start)
+) COMMENT '成本分析聚合表(日)'
+PARTITION BY RANGE (TO_DAYS(bucket_start)) (
+    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
+    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
+    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
+    PARTITION p202504 VALUES LESS THAN (TO_DAYS('2025-05-01')),
+    PARTITION p202505 VALUES LESS THAN (TO_DAYS('2025-06-01')),
+    PARTITION p202506 VALUES LESS THAN (TO_DAYS('2025-07-01')),
+    PARTITION p202507 VALUES LESS THAN (TO_DAYS('2025-08-01')),
+    PARTITION p202508 VALUES LESS THAN (TO_DAYS('2025-09-01')),
+    PARTITION p202509 VALUES LESS THAN (TO_DAYS('2025-10-01')),
+    PARTITION p202510 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+    PARTITION p202511 VALUES LESS THAN (TO_DAYS('2025-12-01')),
+    PARTITION p202512 VALUES LESS THAN (TO_DAYS('2026-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+
+-- 工单效率聚合表（小时级别）
+CREATE TABLE agg_workorder_efficiency_1h (
+    bucket_start DATETIME PRIMARY KEY COMMENT '时间桶开始时间',
+    tenant_id VARCHAR(32) COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    wo_id VARCHAR(32) COMMENT '工单ID',
+    item_id VARCHAR(32) COMMENT '物料ID',
+    line_id VARCHAR(32) COMMENT '产线ID',
+    planned_qty DECIMAL(18,4) DEFAULT 0 COMMENT '计划数量',
+    actual_qty DECIMAL(18,4) DEFAULT 0 COMMENT '实际数量',
+    efficiency_rate DECIMAL(5,2) DEFAULT 0 COMMENT '效率百分比',
+    cycle_time DECIMAL(8,2) DEFAULT 0 COMMENT '实际节拍时间(秒)',
+    standard_cycle_time DECIMAL(8,2) DEFAULT 0 COMMENT '标准节拍时间(秒)',
+    setup_time DECIMAL(8,2) DEFAULT 0 COMMENT '换型时间(分钟)',
+    run_time DECIMAL(8,2) DEFAULT 0 COMMENT '运行时间(分钟)',
+    down_time DECIMAL(8,2) DEFAULT 0 COMMENT '停机时间(分钟)',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant_site (tenant_id, site_id),
+    INDEX idx_wo (wo_id),
+    INDEX idx_item (item_id),
+    INDEX idx_line (line_id),
+    INDEX idx_bucket_start (bucket_start)
+) COMMENT '工单效率聚合表(1小时)'
+PARTITION BY RANGE (TO_DAYS(bucket_start)) (
+    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
+    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
+    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
+    PARTITION p202504 VALUES LESS THAN (TO_DAYS('2025-05-01')),
+    PARTITION p202505 VALUES LESS THAN (TO_DAYS('2025-06-01')),
+    PARTITION p202506 VALUES LESS THAN (TO_DAYS('2025-07-01')),
+    PARTITION p202507 VALUES LESS THAN (TO_DAYS('2025-08-01')),
+    PARTITION p202508 VALUES LESS THAN (TO_DAYS('2025-09-01')),
+    PARTITION p202509 VALUES LESS THAN (TO_DAYS('2025-10-01')),
+    PARTITION p202510 VALUES LESS THAN (TO_DAYS('2025-11-01')),
+    PARTITION p202511 VALUES LESS THAN (TO_DAYS('2025-12-01')),
+    PARTITION p202512 VALUES LESS THAN (TO_DAYS('2026-01-01')),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);

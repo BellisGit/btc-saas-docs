@@ -1,0 +1,519 @@
+# 仪表板视图定义
+# 基于MES系统全局架构基础文档
+
+version: "1.0"
+namespace: "mes.views.dashboard"
+description: "MES系统仪表板视图定义"
+
+views:
+  # 生产监控仪表板
+  ProductionDashboard:
+    view_id: "prod_dashboard"
+    title: "生产监控仪表板"
+    description: "实时生产状态监控"
+    refresh_interval: 30  # 秒
+    layout:
+      grid:
+        rows: 4
+        cols: 6
+      widgets:
+        - id: "production_overview"
+          title: "生产概览"
+          type: "metric_cards"
+          position: [0, 0, 2, 1]
+          data_source: "agg_production_progress"
+          metrics:
+            - name: "total_work_orders"
+              label: "总工单数"
+              type: "counter"
+              color: "blue"
+            - name: "active_work_orders"
+              label: "进行中工单"
+              type: "counter"
+              color: "green"
+            - name: "completed_today"
+              label: "今日完成"
+              type: "counter"
+              color: "orange"
+            - name: "yield_rate"
+              label: "良品率"
+              type: "percentage"
+              color: "purple"
+              format: "{value}%"
+        
+        - id: "wip_status_chart"
+          title: "WIP状态分布"
+          type: "pie_chart"
+          position: [2, 0, 2, 2]
+          data_source: "agg_wip_status"
+          config:
+            dimension: "status"
+            metric: "quantity"
+            colors:
+              PLANNED: "#E3F2FD"
+              IN_PROGRESS: "#4CAF50"
+              COMPLETED: "#2196F3"
+              REJECTED: "#F44336"
+              REWORK: "#FF9800"
+        
+        - id: "yield_trend"
+          title: "良率趋势"
+          type: "line_chart"
+          position: [0, 1, 4, 2]
+          data_source: "agg_yield_5m"
+          config:
+            x_axis: "bucket_start"
+            y_axis: "yield"
+            series: "station"
+            time_range: "24h"
+            aggregation: "5m"
+        
+        - id: "equipment_efficiency"
+          title: "设备效率"
+          type: "bar_chart"
+          position: [4, 0, 2, 2]
+          data_source: "agg_equipment_efficiency"
+          config:
+            x_axis: "equipment_id"
+            y_axis: "efficiency"
+            sort: "desc"
+            limit: 10
+        
+        - id: "quality_alerts"
+          title: "质量告警"
+          type: "alert_list"
+          position: [0, 3, 2, 1]
+          data_source: "quality_alerts"
+          config:
+            max_items: 5
+            severity_colors:
+              CRITICAL: "#F44336"
+              HIGH: "#FF5722"
+              MEDIUM: "#FF9800"
+              LOW: "#4CAF50"
+        
+        - id: "production_plan"
+          title: "生产计划"
+          type: "gantt_chart"
+          position: [2, 3, 4, 1]
+          data_source: "work_orders"
+          config:
+            start_date: "planned_start_date"
+            end_date: "planned_end_date"
+            task_name: "wo_no"
+            status_color: "status"
+
+  # 品质监控仪表板
+  QualityDashboard:
+    view_id: "quality_dashboard"
+    title: "品质监控仪表板"
+    description: "品质数据实时监控"
+    refresh_interval: 60  # 秒
+    layout:
+      grid:
+        rows: 3
+        cols: 4
+      widgets:
+        - id: "quality_overview"
+          title: "品质概览"
+          type: "metric_cards"
+          position: [0, 0, 4, 1]
+          data_source: "agg_quality_stats"
+          metrics:
+            - name: "iqc_pass_rate"
+              label: "IQC通过率"
+              type: "percentage"
+              color: "green"
+              format: "{value}%"
+            - name: "ipqc_pass_rate"
+              label: "IPQC通过率"
+              type: "percentage"
+              color: "blue"
+              format: "{value}%"
+            - name: "oqc_pass_rate"
+              label: "OQC通过率"
+              type: "percentage"
+              color: "purple"
+              format: "{value}%"
+            - name: "overall_yield"
+              label: "综合良率"
+              type: "percentage"
+              color: "orange"
+              format: "{value}%"
+        
+        - id: "defect_analysis"
+          title: "缺陷分析"
+          type: "bar_chart"
+          position: [0, 1, 2, 2]
+          data_source: "defect_statistics"
+          config:
+            x_axis: "defect_code"
+            y_axis: "count"
+            sort: "desc"
+            limit: 10
+            colors: ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FECA57"]
+        
+        - id: "inspection_trend"
+          title: "检验趋势"
+          type: "line_chart"
+          position: [2, 1, 2, 2]
+          data_source: "agg_quality_stats"
+          config:
+            x_axis: "bucket_start"
+            y_axis: "pass_rate"
+            series: "inspection_type"
+            time_range: "7d"
+            aggregation: "1h"
+        
+        - id: "ncr_status"
+          title: "NCR状态"
+          type: "donut_chart"
+          position: [0, 3, 2, 1]
+          data_source: "ncr_statistics"
+          config:
+            dimension: "status"
+            metric: "count"
+            colors:
+              OPEN: "#FF9800"
+              IN_PROGRESS: "#2196F3"
+              RESOLVED: "#4CAF50"
+              CLOSED: "#9E9E9E"
+        
+        - id: "supplier_quality"
+          title: "供应商质量"
+          type: "table"
+          position: [2, 3, 2, 1]
+          data_source: "agg_supplier_performance"
+          config:
+            columns:
+              - field: "supplier_name"
+                title: "供应商"
+                width: 120
+              - field: "quality_pass_rate"
+                title: "质量通过率"
+                width: 100
+                format: "{value}%"
+              - field: "delivery_performance"
+                title: "交货绩效"
+                width: 100
+                format: "{value}%"
+              - field: "overall_score"
+                title: "综合评分"
+                width: 80
+            sort: "overall_score"
+            order: "desc"
+            limit: 5
+
+  # 库存监控仪表板
+  InventoryDashboard:
+    view_id: "inventory_dashboard"
+    title: "库存监控仪表板"
+    description: "库存状态实时监控"
+    refresh_interval: 300  # 秒
+    layout:
+      grid:
+        rows: 3
+        cols: 4
+      widgets:
+        - id: "inventory_overview"
+          title: "库存概览"
+          type: "metric_cards"
+          position: [0, 0, 4, 1]
+          data_source: "agg_inventory_turnover"
+          metrics:
+            - name: "total_items"
+              label: "总物料数"
+              type: "counter"
+              color: "blue"
+            - name: "total_value"
+              label: "库存总价值"
+              type: "currency"
+              color: "green"
+              format: "¥{value:,.2f}"
+            - name: "avg_turnover"
+              label: "平均周转率"
+              type: "decimal"
+              color: "orange"
+              format: "{value:.2f}"
+            - name: "low_stock_alerts"
+              label: "低库存预警"
+              type: "counter"
+              color: "red"
+        
+        - id: "inventory_turnover"
+          title: "库存周转分析"
+          type: "bar_chart"
+          position: [0, 1, 2, 2]
+          data_source: "agg_inventory_turnover"
+          config:
+            x_axis: "item_id"
+            y_axis: "turnover_rate"
+            sort: "asc"
+            limit: 10
+            colors: ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FECA57"]
+        
+        - id: "stock_movement"
+          title: "库存变动"
+          type: "line_chart"
+          position: [2, 1, 2, 2]
+          data_source: "agg_inventory_turnover"
+          config:
+            x_axis: "bucket_start"
+            y_axis: "in_quantity"
+            series: "movement_type"
+            time_range: "7d"
+            aggregation: "1d"
+        
+        - id: "abc_analysis"
+          title: "ABC分析"
+          type: "pie_chart"
+          position: [0, 3, 2, 1]
+          data_source: "abc_analysis"
+          config:
+            dimension: "category"
+            metric: "value_percentage"
+            colors:
+              A: "#F44336"
+              B: "#FF9800"
+              C: "#4CAF50"
+        
+        - id: "low_stock_items"
+          title: "低库存物料"
+          type: "table"
+          position: [2, 3, 2, 1]
+          data_source: "low_stock_items"
+          config:
+            columns:
+              - field: "item_code"
+                title: "物料编码"
+                width: 120
+              - field: "item_name"
+                title: "物料名称"
+                width: 150
+              - field: "available_quantity"
+                title: "可用数量"
+                width: 100
+              - field: "min_stock_level"
+                title: "最低库存"
+                width: 100
+              - field: "days_remaining"
+                title: "预计天数"
+                width: 80
+            sort: "days_remaining"
+            order: "asc"
+            limit: 10
+
+  # 追溯查询视图
+  TraceView:
+    view_id: "trace_view"
+    title: "追溯查询"
+    description: "产品全链路追溯查询"
+    refresh_interval: 0  # 手动刷新
+    layout:
+      type: "single_page"
+      widgets:
+        - id: "trace_input"
+          title: "追溯输入"
+          type: "form"
+          position: [0, 0, 12, 2]
+          config:
+            fields:
+              - name: "search_type"
+                type: "select"
+                label: "搜索类型"
+                options:
+                  - value: "sn"
+                    label: "序列号"
+                  - value: "lot_id"
+                    label: "批次号"
+                  - value: "box_no"
+                    label: "箱号"
+                  - value: "pallet_no"
+                    label: "托盘号"
+                required: true
+              - name: "search_value"
+                type: "input"
+                label: "搜索值"
+                placeholder: "请输入序列号、批次号等"
+                required: true
+              - name: "search_button"
+                type: "button"
+                label: "查询"
+                action: "trace_search"
+        
+        - id: "trace_result"
+          title: "追溯结果"
+          type: "trace_timeline"
+          position: [0, 2, 12, 8]
+          data_source: "trace_result"
+          config:
+            timeline:
+              orientation: "vertical"
+              show_timestamps: true
+              group_by: "entity_type"
+            nodes:
+              - type: "start"
+                icon: "play"
+                color: "#4CAF50"
+              - type: "process"
+                icon: "cog"
+                color: "#2196F3"
+              - type: "inspection"
+                icon: "check"
+                color: "#FF9800"
+              - type: "end"
+                icon: "stop"
+                color: "#F44336"
+        
+        - id: "trace_details"
+          title: "详细信息"
+          type: "accordion"
+          position: [0, 10, 12, 2]
+          data_source: "trace_details"
+          config:
+            sections:
+              - title: "基本信息"
+                fields:
+                  - name: "entity_id"
+                    label: "实体ID"
+                  - name: "entity_type"
+                    label: "实体类型"
+                  - name: "created_at"
+                    label: "创建时间"
+              - title: "生产信息"
+                fields:
+                  - name: "wo_id"
+                    label: "工单号"
+                  - name: "lot_id"
+                    label: "批次号"
+                  - name: "item_id"
+                    label: "物料ID"
+              - title: "质量信息"
+                fields:
+                  - name: "iqc_result"
+                    label: "IQC结果"
+                  - name: "oqc_result"
+                    label: "OQC结果"
+                  - name: "defect_codes"
+                    label: "缺陷代码"
+              - title: "物流信息"
+                fields:
+                  - name: "box_no"
+                    label: "箱号"
+                  - name: "pallet_no"
+                    label: "托盘号"
+                  - name: "shipment_id"
+                    label: "出货单号"
+
+# 数据源定义
+data_sources:
+  agg_production_progress:
+    type: "aggregation"
+    table: "agg_production_progress"
+    refresh_interval: 300  # 5分钟
+    
+  agg_wip_status:
+    type: "aggregation"
+    table: "agg_wip_status"
+    refresh_interval: 60  # 1分钟
+    
+  agg_yield_5m:
+    type: "aggregation"
+    table: "agg_yield_5m"
+    refresh_interval: 300  # 5分钟
+    
+  agg_equipment_efficiency:
+    type: "aggregation"
+    table: "agg_equipment_efficiency"
+    refresh_interval: 300  # 5分钟
+    
+  quality_alerts:
+    type: "realtime"
+    query: "SELECT * FROM quality_alerts WHERE severity IN ('HIGH', 'CRITICAL')"
+    refresh_interval: 30  # 30秒
+    
+  work_orders:
+    type: "database"
+    table: "work_order"
+    refresh_interval: 60  # 1分钟
+    
+  agg_quality_stats:
+    type: "aggregation"
+    table: "agg_quality_stats"
+    refresh_interval: 300  # 5分钟
+    
+  defect_statistics:
+    type: "query"
+    sql: |
+      SELECT defect_code, COUNT(*) as count
+      FROM inspection_item
+      WHERE result = 'FAIL'
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      GROUP BY defect_code
+      ORDER BY count DESC
+    refresh_interval: 300  # 5分钟
+    
+  ncr_statistics:
+    type: "database"
+    table: "ncr"
+    refresh_interval: 60  # 1分钟
+    
+  agg_supplier_performance:
+    type: "aggregation"
+    table: "agg_supplier_performance"
+    refresh_interval: 3600  # 1小时
+    
+  agg_inventory_turnover:
+    type: "aggregation"
+    table: "agg_inventory_turnover"
+    refresh_interval: 3600  # 1小时
+    
+  abc_analysis:
+    type: "query"
+    sql: |
+      SELECT 
+        CASE 
+          WHEN value_percentage >= 80 THEN 'A'
+          WHEN value_percentage >= 15 THEN 'B'
+          ELSE 'C'
+        END as category,
+        SUM(value_percentage) as value_percentage
+      FROM (
+        SELECT 
+          item_id,
+          (total_cost / (SELECT SUM(total_cost) FROM stock)) * 100 as value_percentage
+        FROM stock
+      ) t
+      GROUP BY category
+    refresh_interval: 3600  # 1小时
+    
+  low_stock_items:
+    type: "query"
+    sql: |
+      SELECT 
+        s.item_id,
+        im.item_code,
+        im.item_name,
+        s.available_quantity,
+        s.min_stock_level,
+        DATEDIFF(NOW(), s.last_movement_date) as days_remaining
+      FROM stock s
+      JOIN item_master im ON s.item_id = im.item_id
+      WHERE s.available_quantity <= s.min_stock_level
+        AND s.status = 'AVAILABLE'
+      ORDER BY days_remaining ASC
+    refresh_interval: 300  # 5分钟
+
+# 权限控制
+permissions:
+  ProductionDashboard:
+    roles: ["production_manager", "line_supervisor", "operator"]
+    
+  QualityDashboard:
+    roles: ["quality_manager", "qc_inspector", "quality_engineer"]
+    
+  InventoryDashboard:
+    roles: ["warehouse_manager", "inventory_clerk", "production_planner"]
+    
+  TraceView:
+    roles: ["*"]  # 所有角色都可以访问

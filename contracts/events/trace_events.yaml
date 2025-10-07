@@ -1,0 +1,415 @@
+# 追溯相关事件定义
+# 基于MES系统全局架构基础文档
+
+version: "1.0"
+namespace: "mes.events.trace"
+description: "追溯系统相关事件定义"
+
+events:
+  TraceEventCreated:
+    event_id: "trace.event.created"
+    description: "追溯事件创建"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+          description: "事件唯一标识"
+        event_type:
+          type: "string"
+          enum: ["TraceEventCreated"]
+        aggregate_id:
+          type: "string"
+          description: "追溯事件ID"
+        aggregate_type:
+          type: "string"
+          enum: ["TraceEvent"]
+        event_time:
+          type: "string"
+          format: "date-time"
+          description: "事件发生时间"
+        version:
+          type: "integer"
+          description: "事件版本号"
+        data:
+          type: "object"
+          properties:
+            trace_event_id:
+              type: "string"
+              description: "追溯事件ID"
+            entity_type:
+              type: "string"
+              enum: ["SN", "LOT", "WO", "GRN", "BOX", "PLT", "INSP"]
+              description: "实体类型"
+            entity_id:
+              type: "string"
+              description: "实体ID"
+            action:
+              type: "string"
+              enum: ["START", "END", "PASS", "FAIL", "REWORK", "MOVE", "PACK", "SHIP"]
+              description: "动作"
+            occurred_at:
+              type: "string"
+              format: "date-time"
+              description: "发生时间"
+            op_id:
+              type: "string"
+              description: "工序ID"
+            op_name:
+              type: "string"
+              description: "工序名称"
+            op_start_at:
+              type: "string"
+              format: "date-time"
+              description: "工序开始时间"
+            op_end_at:
+              type: "string"
+              format: "date-time"
+              description: "工序结束时间"
+            operator_id:
+              type: "string"
+              description: "操作员ID"
+            result:
+              type: "string"
+              enum: ["PASS", "FAIL", "REWORK", "HOLD"]
+              description: "结果"
+            station_id:
+              type: "string"
+              description: "工位ID"
+            shift_code:
+              type: "string"
+              description: "班次代码"
+            ref_id:
+              type: "string"
+              description: "关联单据ID"
+            data:
+              type: "object"
+              description: "扩展数据"
+            prev_event_id:
+              type: "string"
+              description: "前一个事件ID"
+            correlation_id:
+              type: "string"
+              description: "关联ID"
+            tenant_id:
+              type: "string"
+              description: "租户ID"
+            site_id:
+              type: "string"
+              description: "站点ID"
+            source_system:
+              type: "string"
+              description: "来源系统"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+              description: "关联ID"
+            causation_id:
+              type: "string"
+              description: "原因事件ID"
+            source_system:
+              type: "string"
+              description: "来源系统"
+            trace_id:
+              type: "string"
+              description: "链路追踪ID"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  SerialNumberGenerated:
+    event_id: "sn.generated"
+    description: "序列号生成事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["SerialNumberGenerated"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["SerialNumber"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            sn:
+              type: "string"
+              description: "序列号"
+            lot_id:
+              type: "string"
+              description: "批次ID"
+            item_id:
+              type: "string"
+              description: "物料ID"
+            wo_id:
+              type: "string"
+              description: "工单ID"
+            generated_by:
+              type: "string"
+              description: "生成人"
+            generated_at:
+              type: "string"
+              format: "date-time"
+              description: "生成时间"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  BatchCreated:
+    event_id: "batch.created"
+    description: "批次创建事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["BatchCreated"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["ProductionLot"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            lot_id:
+              type: "string"
+              description: "批次号"
+            wo_id:
+              type: "string"
+              description: "工单ID"
+            item_id:
+              type: "string"
+              description: "物料ID"
+            lot_quantity:
+              type: "number"
+              format: "decimal"
+              description: "批次数量"
+            created_by:
+              type: "string"
+              description: "创建人"
+            created_at:
+              type: "string"
+              format: "date-time"
+              description: "创建时间"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  MaterialConsumption:
+    event_id: "material.consumption"
+    description: "物料消耗事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["MaterialConsumption"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["MaterialConsumption"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            consumption_id:
+              type: "string"
+              description: "消耗记录ID"
+            lot_id:
+              type: "string"
+              description: "生产批次ID"
+            item_id:
+              type: "string"
+              description: "消耗物料ID"
+            supplier_id:
+              type: "string"
+              description: "供应商ID"
+            grn_id:
+              type: "string"
+              description: "收货单ID"
+            mold_id:
+              type: "string"
+              description: "模具ID"
+            qty_used:
+              type: "number"
+              format: "decimal"
+              description: "使用数量"
+            unit_cost:
+              type: "number"
+              format: "decimal"
+              description: "单位成本"
+            consumed_by:
+              type: "string"
+              description: "消耗记录人"
+            consumed_at:
+              type: "string"
+              format: "date-time"
+              description: "消耗时间"
+            station_id:
+              type: "string"
+              description: "工位ID"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  ShipmentCreated:
+    event_id: "shipment.created"
+    description: "出货创建事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["ShipmentCreated"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["Shipment"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            shipment_id:
+              type: "string"
+              description: "出货单ID"
+            customer_id:
+              type: "string"
+              description: "客户ID"
+            shipping_date:
+              type: "string"
+              format: "date-time"
+              description: "出货日期"
+            tracking_number:
+              type: "string"
+              description: "跟踪号"
+            boxes:
+              type: "array"
+              description: "箱号列表"
+              items:
+                type: "object"
+                properties:
+                  box_no:
+                    type: "string"
+                    description: "箱号"
+                  pallet_no:
+                    type: "string"
+                    description: "托盘号"
+                  serial_numbers:
+                    type: "array"
+                    description: "序列号列表"
+                    items:
+                      type: "string"
+            created_by:
+              type: "string"
+              description: "创建人"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+# 事件流定义
+event_flows:
+  TraceLifecycle:
+    description: "追溯生命周期事件流"
+    events:
+      - "BatchCreated"
+      - "SerialNumberGenerated"
+      - "MaterialConsumption"
+      - "TraceEventCreated"
+      - "ShipmentCreated"
+
+  ForwardTraceability:
+    description: "正向追溯流程"
+    start_event: "BatchCreated"
+    end_event: "ShipmentCreated"
+    intermediate_events:
+      - "SerialNumberGenerated"
+      - "MaterialConsumption"
+      - "TraceEventCreated"
+
+  ReverseTraceability:
+    description: "反向追溯流程"
+    start_event: "ShipmentCreated"
+    trace_back_to:
+      - "SerialNumberGenerated"
+      - "MaterialConsumption"
+      - "BatchCreated"
+
+# 事件发布策略
+publishing:
+  strategy: "immediate"
+  retry_policy:
+    max_retries: 3
+    backoff_multiplier: 2
+    initial_delay_ms: 1000
+  dead_letter_queue: true
+  trace_requirements:
+    - name: "complete_trace_chain"
+      condition: "all_required_events_present"
+      action: "validate_trace"
+    - name: "material_trace"
+      condition: "material_consumption_event"
+      action: "link_to_supplier"

@@ -1,0 +1,607 @@
+# 数据Schema定义
+# 基于MES系统全局架构基础文档
+
+version: "1.0"
+namespace: "mes.data.schemas"
+description: "MES系统数据模型Schema定义"
+
+schemas:
+  # 基础数据Schema
+  ItemMaster:
+    type: "object"
+    properties:
+      item_id:
+        type: "string"
+        pattern: "^ITM-[0-9]{6}-[0-9]{4}$"
+        description: "物料编码 ITM-YYYYMM-XXXX"
+        example: "ITM-202501-0001"
+      item_code:
+        type: "string"
+        maxLength: 64
+        description: "ERP物料编码"
+        example: "MAT001"
+      item_name:
+        type: "string"
+        maxLength: 255
+        description: "物料名称"
+        example: "电子元器件A"
+      item_type:
+        type: "string"
+        enum: ["RAW", "COMPONENT", "FINISHED", "TOOL", "CONSUMABLE"]
+        description: "物料类型"
+        example: "RAW"
+      uom:
+        type: "string"
+        maxLength: 16
+        description: "计量单位"
+        example: "PCS"
+      specification:
+        type: "string"
+        description: "规格说明"
+        example: "尺寸: 10x10mm, 电压: 5V"
+      supplier_id:
+        type: "string"
+        pattern: "^SUP-[A-Z0-9]{5}$"
+        description: "默认供应商"
+        example: "SUP-ACME1"
+      status:
+        type: "string"
+        enum: ["ACTIVE", "INACTIVE", "OBSOLETE"]
+        description: "状态"
+        example: "ACTIVE"
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+      site_id:
+        type: "string"
+        description: "站点ID"
+        example: "SITE001"
+      created_by:
+        type: "string"
+        maxLength: 64
+        description: "创建人"
+        example: "admin"
+      created_at:
+        type: "string"
+        format: "date-time"
+        description: "创建时间"
+        example: "2025-01-07T10:30:00Z"
+      updated_by:
+        type: "string"
+        maxLength: 64
+        description: "更新人"
+        example: "admin"
+      updated_at:
+        type: "string"
+        format: "date-time"
+        description: "更新时间"
+        example: "2025-01-07T10:30:00Z"
+    required: ["item_id", "item_code", "item_name", "item_type", "uom", "status", "created_by", "created_at"]
+
+  SupplierMaster:
+    type: "object"
+    properties:
+      supplier_id:
+        type: "string"
+        pattern: "^SUP-[A-Z0-9]{5}$"
+        description: "供应商编码 SUP-XXXXX"
+        example: "SUP-ACME1"
+      supplier_code:
+        type: "string"
+        maxLength: 64
+        description: "供应商代码"
+        example: "ACME001"
+      supplier_name:
+        type: "string"
+        maxLength: 255
+        description: "供应商名称"
+        example: "ACME电子有限公司"
+      contact_person:
+        type: "string"
+        maxLength: 100
+        description: "联系人"
+        example: "张三"
+      contact_phone:
+        type: "string"
+        maxLength: 50
+        description: "联系电话"
+        example: "13800138000"
+      contact_email:
+        type: "string"
+        format: "email"
+        maxLength: 100
+        description: "联系邮箱"
+        example: "zhangsan@acme.com"
+      address:
+        type: "string"
+        description: "地址"
+        example: "深圳市南山区科技园"
+      status:
+        type: "string"
+        enum: ["ACTIVE", "INACTIVE", "BLACKLIST"]
+        description: "状态"
+        example: "ACTIVE"
+      quality_rating:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        maximum: 5
+        multipleOf: 0.01
+        description: "质量评分"
+        example: 4.5
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+    required: ["supplier_id", "supplier_code", "supplier_name", "status", "quality_rating", "created_by", "created_at"]
+
+  # 生产管理Schema
+  WorkOrder:
+    type: "object"
+    properties:
+      wo_id:
+        type: "string"
+        pattern: "^WO-[A-Z0-9]+-[0-9]{4}$"
+        description: "工单号 WO-LINE-SEQ"
+        example: "WO-L1-0001"
+      wo_no:
+        type: "string"
+        maxLength: 64
+        description: "工单编号"
+        example: "WO202501070001"
+      item_id:
+        type: "string"
+        pattern: "^ITM-[0-9]{6}-[0-9]{4}$"
+        description: "生产物料ID"
+        example: "ITM-202501-0001"
+      planned_quantity:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "计划数量"
+        example: 1000
+      actual_quantity:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "实际数量"
+        example: 950
+      line_id:
+        type: "string"
+        description: "产线ID"
+        example: "L1"
+      priority:
+        type: "string"
+        enum: ["LOW", "NORMAL", "HIGH", "URGENT"]
+        description: "优先级"
+        example: "NORMAL"
+      status:
+        type: "string"
+        enum: ["DRAFT", "RELEASED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "ON_HOLD"]
+        description: "状态"
+        example: "IN_PROGRESS"
+      planned_start_date:
+        type: "string"
+        format: "date-time"
+        description: "计划开始时间"
+        example: "2025-01-07T08:00:00Z"
+      planned_end_date:
+        type: "string"
+        format: "date-time"
+        description: "计划结束时间"
+        example: "2025-01-07T18:00:00Z"
+      actual_start_date:
+        type: "string"
+        format: "date-time"
+        description: "实际开始时间"
+        example: "2025-01-07T08:15:00Z"
+      actual_end_date:
+        type: "string"
+        format: "date-time"
+        description: "实际结束时间"
+        example: "2025-01-07T17:45:00Z"
+      routing_id:
+        type: "string"
+        description: "工艺路线ID"
+        example: "ROUTING-001"
+      remarks:
+        type: "string"
+        description: "备注"
+        example: "紧急订单"
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+    required: ["wo_id", "wo_no", "item_id", "planned_quantity", "status", "created_by", "created_at"]
+
+  ProductionLot:
+    type: "object"
+    properties:
+      lot_id:
+        type: "string"
+        pattern: "^LOT-[0-9]{8}-[0-9]{3}$"
+        description: "批次号 LOT-YYYYMMDD-SEQ"
+        example: "LOT-20250107-001"
+      wo_id:
+        type: "string"
+        pattern: "^WO-[A-Z0-9]+-[0-9]{4}$"
+        description: "工单ID"
+        example: "WO-L1-0001"
+      item_id:
+        type: "string"
+        pattern: "^ITM-[0-9]{6}-[0-9]{4}$"
+        description: "物料ID"
+        example: "ITM-202501-0001"
+      lot_quantity:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "批次数量"
+        example: 1000
+      start_date:
+        type: "string"
+        format: "date-time"
+        description: "开始时间"
+        example: "2025-01-07T08:15:00Z"
+      end_date:
+        type: "string"
+        format: "date-time"
+        description: "结束时间"
+        example: "2025-01-07T17:45:00Z"
+      status:
+        type: "string"
+        enum: ["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
+        description: "状态"
+        example: "COMPLETED"
+      fai_status:
+        type: "string"
+        enum: ["PENDING", "PASS", "FAIL"]
+        description: "首件状态"
+        example: "PASS"
+      fai_date:
+        type: "string"
+        format: "date-time"
+        description: "首件验证日期"
+        example: "2025-01-07T09:00:00Z"
+      fai_by:
+        type: "string"
+        description: "首件验证人"
+        example: "INSP001"
+      remarks:
+        type: "string"
+        description: "备注"
+        example: "正常生产"
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+    required: ["lot_id", "wo_id", "item_id", "lot_quantity", "status", "fai_status", "created_by", "created_at"]
+
+  SerialNumber:
+    type: "object"
+    properties:
+      sn:
+        type: "string"
+        pattern: "^SN-LOT-[0-9]{8}-[0-9]{3}-[0-9]{4}$"
+        description: "序列号 SN-{lot_id}-{SEQ}"
+        example: "SN-LOT-20250107-001-0001"
+      lot_id:
+        type: "string"
+        pattern: "^LOT-[0-9]{8}-[0-9]{3}$"
+        description: "批次ID"
+        example: "LOT-20250107-001"
+      item_id:
+        type: "string"
+        pattern: "^ITM-[0-9]{6}-[0-9]{4}$"
+        description: "物料ID"
+        example: "ITM-202501-0001"
+      wo_id:
+        type: "string"
+        pattern: "^WO-[A-Z0-9]+-[0-9]{4}$"
+        description: "工单ID"
+        example: "WO-L1-0001"
+      status:
+        type: "string"
+        enum: ["PLANNED", "IN_PROGRESS", "COMPLETED", "REJECTED", "REWORK"]
+        description: "状态"
+        example: "COMPLETED"
+      created_date:
+        type: "string"
+        format: "date-time"
+        description: "创建日期"
+        example: "2025-01-07T08:15:00Z"
+      completed_date:
+        type: "string"
+        format: "date-time"
+        description: "完成日期"
+        example: "2025-01-07T17:30:00Z"
+      box_no:
+        type: "string"
+        pattern: "^BOX-[0-9]{8}-[0-9]{3}$"
+        description: "箱号"
+        example: "BOX-20250107-001"
+      pallet_no:
+        type: "string"
+        pattern: "^PLT-[0-9]{8}-[0-9]{3}$"
+        description: "托盘号"
+        example: "PLT-20250107-001"
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+    required: ["sn", "lot_id", "item_id", "wo_id", "status", "created_by", "created_at"]
+
+  # 品质管理Schema
+  Inspection:
+    type: "object"
+    properties:
+      insp_id:
+        type: "string"
+        pattern: "^INSP-(IQC|IPQC|OQC|FAI)-[0-9]{8}-[0-9]{3}$"
+        description: "检验单号 INSP-{type}-YYYYMMDD-SEQ"
+        example: "INSP-IQC-20250107-001"
+      type:
+        type: "string"
+        enum: ["IQC", "IPQC", "OQC", "FAI"]
+        description: "检验类型"
+        example: "IQC"
+      ref_id:
+        type: "string"
+        description: "关联单据ID"
+        example: "GRN-20250107-001"
+      ref_type:
+        type: "string"
+        enum: ["GRN", "LOT", "WO", "BOX", "SN"]
+        description: "关联单据类型"
+        example: "GRN"
+      result:
+        type: "string"
+        enum: ["PASS", "FAIL", "SPECIAL", "PENDING"]
+        description: "检验结果"
+        example: "PASS"
+      sample_size:
+        type: "integer"
+        minimum: 1
+        description: "抽样数量"
+        example: 50
+      defect_quantity:
+        type: "integer"
+        minimum: 0
+        description: "缺陷数量"
+        example: 2
+      aql_level:
+        type: "string"
+        description: "AQL等级"
+        example: "2.5"
+      inspector:
+        type: "string"
+        maxLength: 64
+        description: "检验员"
+        example: "INSP001"
+      inspection_date:
+        type: "string"
+        format: "date-time"
+        description: "检验日期"
+        example: "2025-01-07T10:00:00Z"
+      remarks:
+        type: "string"
+        description: "备注"
+        example: "正常检验"
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+    required: ["insp_id", "type", "ref_id", "ref_type", "inspector", "created_by", "created_at"]
+
+  # 追溯系统Schema
+  TraceEvent:
+    type: "object"
+    properties:
+      event_id:
+        type: "string"
+        format: "uuid"
+        description: "事件ID"
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      entity_type:
+        type: "string"
+        enum: ["SN", "LOT", "WO", "GRN", "BOX", "PLT", "INSP"]
+        description: "实体类型"
+        example: "SN"
+      entity_id:
+        type: "string"
+        description: "实体ID"
+        example: "SN-LOT-20250107-001-0001"
+      action:
+        type: "string"
+        enum: ["START", "END", "PASS", "FAIL", "REWORK", "MOVE", "PACK", "SHIP"]
+        description: "动作"
+        example: "PASS"
+      occurred_at:
+        type: "string"
+        format: "date-time"
+        description: "发生时间"
+        example: "2025-01-07T10:30:00Z"
+      op_id:
+        type: "string"
+        description: "工序ID"
+        example: "OP001"
+      op_name:
+        type: "string"
+        maxLength: 64
+        description: "工序名称"
+        example: "终检"
+      op_start_at:
+        type: "string"
+        format: "date-time"
+        description: "工序开始时间"
+        example: "2025-01-07T10:25:00Z"
+      op_end_at:
+        type: "string"
+        format: "date-time"
+        description: "工序结束时间"
+        example: "2025-01-07T10:35:00Z"
+      operator_id:
+        type: "string"
+        maxLength: 64
+        description: "操作员ID"
+        example: "OP001"
+      result:
+        type: "string"
+        enum: ["PASS", "FAIL", "REWORK", "HOLD"]
+        description: "结果"
+        example: "PASS"
+      station_id:
+        type: "string"
+        maxLength: 64
+        description: "工位ID"
+        example: "ST001"
+      shift_code:
+        type: "string"
+        maxLength: 16
+        description: "班次代码"
+        example: "DAY"
+      ref_id:
+        type: "string"
+        description: "关联单据ID"
+        example: "INSP-IQC-20250107-001"
+      data:
+        type: "object"
+        description: "扩展数据"
+        example: {"temperature": 25.5, "humidity": 60}
+      prev_event_id:
+        type: "string"
+        format: "uuid"
+        description: "前一个事件ID"
+        example: "550e8400-e29b-41d4-a716-446655440001"
+      correlation_id:
+        type: "string"
+        description: "关联ID"
+        example: "CORR-001"
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+      site_id:
+        type: "string"
+        description: "站点ID"
+        example: "SITE001"
+      source_system:
+        type: "string"
+        description: "来源系统"
+        example: "MES"
+    required: ["event_id", "entity_type", "entity_id", "action", "occurred_at", "created_at"]
+
+  # 库存管理Schema
+  Stock:
+    type: "object"
+    properties:
+      id:
+        type: "integer"
+        format: "int64"
+        description: "自增主键"
+        example: 1
+      item_id:
+        type: "string"
+        pattern: "^ITM-[0-9]{6}-[0-9]{4}$"
+        description: "物料ID"
+        example: "ITM-202501-0001"
+      lot_id:
+        type: "string"
+        pattern: "^LOT-[0-9]{8}-[0-9]{3}$"
+        description: "批次号"
+        example: "LOT-20250107-001"
+      location_id:
+        type: "string"
+        description: "库位ID"
+        example: "LOC001"
+      quantity:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "库存数量"
+        example: 1000
+      available_quantity:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "可用数量"
+        example: 800
+      reserved_quantity:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "预留数量"
+        example: 200
+      unit_cost:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "单位成本"
+        example: 10.5
+      total_cost:
+        type: "number"
+        format: "decimal"
+        minimum: 0
+        description: "总成本"
+        example: 10500
+      status:
+        type: "string"
+        enum: ["AVAILABLE", "RESERVED", "QUARANTINE", "REJECTED"]
+        description: "状态"
+        example: "AVAILABLE"
+      expiry_date:
+        type: "string"
+        format: "date"
+        description: "过期日期"
+        example: "2025-12-31"
+      tenant_id:
+        type: "string"
+        description: "租户ID"
+        example: "TENANT001"
+    required: ["item_id", "quantity", "available_quantity", "reserved_quantity", "status", "created_by", "created_at"]
+
+# 数据验证规则
+validation_rules:
+  item_id_format:
+    pattern: "^ITM-[0-9]{6}-[0-9]{4}$"
+    message: "物料ID格式必须为 ITM-YYYYMM-XXXX"
+  
+  supplier_id_format:
+    pattern: "^SUP-[A-Z0-9]{5}$"
+    message: "供应商ID格式必须为 SUP-XXXXX"
+  
+  work_order_id_format:
+    pattern: "^WO-[A-Z0-9]+-[0-9]{4}$"
+    message: "工单ID格式必须为 WO-LINE-SEQ"
+  
+  lot_id_format:
+    pattern: "^LOT-[0-9]{8}-[0-9]{3}$"
+    message: "批次ID格式必须为 LOT-YYYYMMDD-SEQ"
+  
+  serial_number_format:
+    pattern: "^SN-LOT-[0-9]{8}-[0-9]{3}-[0-9]{4}$"
+    message: "序列号格式必须为 SN-LOT-YYYYMMDD-SEQ-XXXX"
+
+# 数据约束
+constraints:
+  business_rules:
+    - name: "work_order_quantity_positive"
+      condition: "planned_quantity > 0"
+      message: "工单计划数量必须大于0"
+    
+    - name: "lot_quantity_positive"
+      condition: "lot_quantity > 0"
+      message: "批次数量必须大于0"
+    
+    - name: "stock_quantity_balance"
+      condition: "quantity = available_quantity + reserved_quantity"
+      message: "库存总数量必须等于可用数量加预留数量"
+    
+    - name: "inspection_sample_size"
+      condition: "sample_size >= 1"
+      message: "抽样数量必须大于等于1"
+    
+    - name: "quality_rating_range"
+      condition: "0 <= quality_rating <= 5"
+      message: "质量评分必须在0-5之间"

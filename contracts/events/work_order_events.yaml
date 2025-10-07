@@ -1,0 +1,305 @@
+# 工单相关事件定义
+# 基于MES系统全局架构基础文档
+
+version: "1.0"
+namespace: "mes.events.workorder"
+description: "生产工单相关事件定义"
+
+events:
+  WorkOrderCreated:
+    event_id: "wo.created"
+    description: "工单创建事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+          description: "事件唯一标识"
+        event_type:
+          type: "string"
+          enum: ["WorkOrderCreated"]
+        aggregate_id:
+          type: "string"
+          description: "工单ID (WO-LINE-SEQ)"
+        aggregate_type:
+          type: "string"
+          enum: ["WorkOrder"]
+        event_time:
+          type: "string"
+          format: "date-time"
+          description: "事件发生时间"
+        version:
+          type: "integer"
+          description: "事件版本号"
+        data:
+          type: "object"
+          properties:
+            wo_id:
+              type: "string"
+              description: "工单号"
+            wo_no:
+              type: "string"
+              description: "工单编号"
+            item_id:
+              type: "string"
+              description: "生产物料ID"
+            planned_quantity:
+              type: "number"
+              format: "decimal"
+              description: "计划数量"
+            line_id:
+              type: "string"
+              description: "产线ID"
+            priority:
+              type: "string"
+              enum: ["LOW", "NORMAL", "HIGH", "URGENT"]
+              description: "优先级"
+            planned_start_date:
+              type: "string"
+              format: "date-time"
+              description: "计划开始时间"
+            planned_end_date:
+              type: "string"
+              format: "date-time"
+              description: "计划结束时间"
+            routing_id:
+              type: "string"
+              description: "工艺路线ID"
+            tenant_id:
+              type: "string"
+              description: "租户ID"
+            created_by:
+              type: "string"
+              description: "创建人"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+              description: "关联ID"
+            causation_id:
+              type: "string"
+              description: "原因事件ID"
+            source_system:
+              type: "string"
+              description: "来源系统"
+            trace_id:
+              type: "string"
+              description: "链路追踪ID"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  WorkOrderReleased:
+    event_id: "wo.released"
+    description: "工单发布事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["WorkOrderReleased"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["WorkOrder"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            wo_id:
+              type: "string"
+            released_by:
+              type: "string"
+              description: "发布人"
+            released_at:
+              type: "string"
+              format: "date-time"
+              description: "发布时间"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  WorkOrderStarted:
+    event_id: "wo.started"
+    description: "工单开始生产事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["WorkOrderStarted"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["WorkOrder"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            wo_id:
+              type: "string"
+            actual_start_date:
+              type: "string"
+              format: "date-time"
+              description: "实际开始时间"
+            started_by:
+              type: "string"
+              description: "启动人"
+            station_id:
+              type: "string"
+              description: "工位ID"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  WorkOrderCompleted:
+    event_id: "wo.completed"
+    description: "工单完成事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["WorkOrderCompleted"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["WorkOrder"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            wo_id:
+              type: "string"
+            actual_quantity:
+              type: "number"
+              format: "decimal"
+              description: "实际完成数量"
+            actual_end_date:
+              type: "string"
+              format: "date-time"
+              description: "实际结束时间"
+            completed_by:
+              type: "string"
+              description: "完成人"
+            yield_rate:
+              type: "number"
+              format: "decimal"
+              description: "良品率"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+  WorkOrderCancelled:
+    event_id: "wo.cancelled"
+    description: "工单取消事件"
+    schema:
+      type: "object"
+      properties:
+        event_id:
+          type: "string"
+          format: "uuid"
+        event_type:
+          type: "string"
+          enum: ["WorkOrderCancelled"]
+        aggregate_id:
+          type: "string"
+        aggregate_type:
+          type: "string"
+          enum: ["WorkOrder"]
+        event_time:
+          type: "string"
+          format: "date-time"
+        version:
+          type: "integer"
+        data:
+          type: "object"
+          properties:
+            wo_id:
+              type: "string"
+            cancelled_by:
+              type: "string"
+              description: "取消人"
+            cancelled_at:
+              type: "string"
+              format: "date-time"
+              description: "取消时间"
+            reason:
+              type: "string"
+              description: "取消原因"
+            tenant_id:
+              type: "string"
+        metadata:
+          type: "object"
+          properties:
+            correlation_id:
+              type: "string"
+            source_system:
+              type: "string"
+      required: ["event_id", "event_type", "aggregate_id", "event_time", "data"]
+
+# 事件流定义
+event_flows:
+  WorkOrderLifecycle:
+    description: "工单生命周期事件流"
+    events:
+      - "WorkOrderCreated"
+      - "WorkOrderReleased"
+      - "WorkOrderStarted"
+      - "WorkOrderCompleted"
+    alternative_endings:
+      - "WorkOrderCancelled"
+
+# 事件发布策略
+publishing:
+  strategy: "immediate"
+  retry_policy:
+    max_retries: 3
+    backoff_multiplier: 2
+    initial_delay_ms: 1000
+  dead_letter_queue: true

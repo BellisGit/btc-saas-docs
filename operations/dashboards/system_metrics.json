@@ -1,0 +1,395 @@
+{
+  "dashboard": {
+    "id": "system_metrics",
+    "title": "系统性能监控面板",
+    "description": "MES系统基础设施性能监控",
+    "version": "1.0",
+    "refresh_interval": 30,
+    "time_range": "1h",
+    "panels": [
+      {
+        "id": "cpu_usage",
+        "title": "CPU使用率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 - (avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "CPU使用率",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "百分比",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 80,
+            "colorMode": "critical",
+            "op": "gt"
+          },
+          {
+            "value": 60,
+            "colorMode": "warning",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": "memory_usage",
+        "title": "内存使用率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))",
+            "legendFormat": "内存使用率",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "百分比",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 85,
+            "colorMode": "critical",
+            "op": "gt"
+          },
+          {
+            "value": 70,
+            "colorMode": "warning",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": "disk_usage",
+        "title": "磁盘使用率",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "100 * (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes))",
+            "legendFormat": "磁盘使用率",
+            "refId": "A"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "百分比",
+            "min": 0,
+            "max": 100
+          }
+        ],
+        "thresholds": [
+          {
+            "value": 90,
+            "colorMode": "critical",
+            "op": "gt"
+          },
+          {
+            "value": 80,
+            "colorMode": "warning",
+            "op": "gt"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": "network_traffic",
+        "title": "网络流量",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "irate(node_network_receive_bytes_total[5m])",
+            "legendFormat": "接收流量",
+            "refId": "A"
+          },
+          {
+            "expr": "irate(node_network_transmit_bytes_total[5m])",
+            "legendFormat": "发送流量",
+            "refId": "B"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "字节/秒",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": "database_connections",
+        "title": "数据库连接数",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "mysql_global_status_threads_connected",
+            "legendFormat": "当前连接数",
+            "refId": "A"
+          },
+          {
+            "expr": "mysql_global_status_max_used_connections",
+            "legendFormat": "最大连接数",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 50
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": "database_qps",
+        "title": "数据库QPS",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(mysql_global_status_queries[5m])",
+            "legendFormat": "查询/秒",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1000
+                },
+                {
+                  "color": "red",
+                  "value": 5000
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 16
+        }
+      },
+      {
+        "id": "redis_memory",
+        "title": "Redis内存使用",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_memory_used_bytes",
+            "legendFormat": "已使用内存",
+            "refId": "A"
+          },
+          {
+            "expr": "redis_memory_max_bytes",
+            "legendFormat": "最大内存",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1073741824
+                },
+                {
+                  "color": "red",
+                  "value": 2147483648
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": "redis_connections",
+        "title": "Redis连接数",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "redis_connected_clients",
+            "legendFormat": "连接数",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 100
+                },
+                {
+                  "color": "red",
+                  "value": 200
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 16
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "部署事件",
+          "datasource": "prometheus",
+          "enable": true,
+          "expr": "deployment_events",
+          "iconColor": "blue"
+        }
+      ]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "instance",
+          "type": "query",
+          "query": "label_values(up, instance)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "job",
+          "type": "query",
+          "query": "label_values(up, job)",
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    }
+  },
+  "alerts": [
+    {
+      "name": "High CPU Usage",
+      "condition": "avg(cpu_usage) > 80",
+      "severity": "critical",
+      "message": "CPU使用率超过80%",
+      "actions": ["email", "sms", "webhook"]
+    },
+    {
+      "name": "High Memory Usage",
+      "condition": "avg(memory_usage) > 85",
+      "severity": "critical",
+      "message": "内存使用率超过85%",
+      "actions": ["email", "sms", "webhook"]
+    },
+    {
+      "name": "High Disk Usage",
+      "condition": "avg(disk_usage) > 90",
+      "severity": "critical",
+      "message": "磁盘使用率超过90%",
+      "actions": ["email", "sms", "webhook"]
+    },
+    {
+      "name": "Database Connection High",
+      "condition": "mysql_global_status_threads_connected > 80",
+      "severity": "warning",
+      "message": "数据库连接数过高",
+      "actions": ["email"]
+    },
+    {
+      "name": "Redis Memory High",
+      "condition": "redis_memory_used_bytes / redis_memory_max_bytes > 0.8",
+      "severity": "warning",
+      "message": "Redis内存使用率超过80%",
+      "actions": ["email"]
+    }
+  ]
+}

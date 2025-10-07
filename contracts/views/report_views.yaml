@@ -1,0 +1,640 @@
+# 报表视图定义
+# 基于MES系统全局架构基础文档
+
+version: "1.0"
+namespace: "mes.views.reports"
+description: "MES系统报表视图定义"
+
+reports:
+  # 生产报表
+  ProductionReport:
+    report_id: "prod_report"
+    title: "生产报表"
+    description: "生产执行情况报表"
+    category: "production"
+    type: "scheduled"
+    schedule: "daily"
+    format: ["pdf", "excel", "html"]
+    
+    sections:
+      - name: "production_summary"
+        title: "生产汇总"
+        type: "summary_table"
+        data_source: "production_summary"
+        columns:
+          - field: "date"
+            title: "日期"
+            type: "date"
+          - field: "total_work_orders"
+            title: "总工单数"
+            type: "integer"
+          - field: "completed_orders"
+            title: "完成工单数"
+            type: "integer"
+          - field: "completion_rate"
+            title: "完成率"
+            type: "percentage"
+          - field: "total_quantity"
+            title: "总产量"
+            type: "decimal"
+          - field: "yield_rate"
+            title: "良品率"
+            type: "percentage"
+          - field: "efficiency"
+            title: "效率"
+            type: "percentage"
+      
+      - name: "work_order_details"
+        title: "工单明细"
+        type: "detail_table"
+        data_source: "work_order_details"
+        columns:
+          - field: "wo_id"
+            title: "工单号"
+            type: "string"
+          - field: "item_name"
+            title: "物料名称"
+            type: "string"
+          - field: "planned_quantity"
+            title: "计划数量"
+            type: "decimal"
+          - field: "actual_quantity"
+            title: "实际数量"
+            type: "decimal"
+          - field: "completion_rate"
+            title: "完成率"
+            type: "percentage"
+          - field: "status"
+            title: "状态"
+            type: "string"
+          - field: "planned_start_date"
+            title: "计划开始时间"
+            type: "datetime"
+          - field: "actual_start_date"
+            title: "实际开始时间"
+            type: "datetime"
+          - field: "planned_end_date"
+            title: "计划结束时间"
+            type: "datetime"
+          - field: "actual_end_date"
+            title: "实际结束时间"
+            type: "datetime"
+      
+      - name: "production_chart"
+        title: "生产趋势图"
+        type: "line_chart"
+        data_source: "production_trend"
+        config:
+          x_axis: "date"
+          y_axis: "quantity"
+          series: "item_id"
+          title: "产量趋势"
+          height: 300
+
+  # 质量报表
+  QualityReport:
+    report_id: "quality_report"
+    title: "质量报表"
+    description: "质量控制情况报表"
+    category: "quality"
+    type: "scheduled"
+    schedule: "weekly"
+    format: ["pdf", "excel", "html"]
+    
+    sections:
+      - name: "quality_summary"
+        title: "质量汇总"
+        type: "summary_table"
+        data_source: "quality_summary"
+        columns:
+          - field: "week"
+            title: "周次"
+            type: "string"
+          - field: "total_inspections"
+            title: "总检验数"
+            type: "integer"
+          - field: "pass_count"
+            title: "通过数"
+            type: "integer"
+          - field: "fail_count"
+            title: "失败数"
+            type: "integer"
+          - field: "pass_rate"
+            title: "通过率"
+            type: "percentage"
+          - field: "iqc_pass_rate"
+            title: "IQC通过率"
+            type: "percentage"
+          - field: "ipqc_pass_rate"
+            title: "IPQC通过率"
+            type: "percentage"
+          - field: "oqc_pass_rate"
+            title: "OQC通过率"
+            type: "percentage"
+      
+      - name: "defect_analysis"
+        title: "缺陷分析"
+        type: "detail_table"
+        data_source: "defect_analysis"
+        columns:
+          - field: "defect_code"
+            title: "缺陷代码"
+            type: "string"
+          - field: "defect_name"
+            title: "缺陷名称"
+            type: "string"
+          - field: "category"
+            title: "缺陷分类"
+            type: "string"
+          - field: "occurrence_count"
+            title: "发生次数"
+            type: "integer"
+          - field: "percentage"
+            title: "占比"
+            type: "percentage"
+          - field: "trend"
+            title: "趋势"
+            type: "string"
+      
+      - name: "quality_chart"
+        title: "质量趋势图"
+        type: "line_chart"
+        data_source: "quality_trend"
+        config:
+          x_axis: "date"
+          y_axis: "pass_rate"
+          series: "inspection_type"
+          title: "质量趋势"
+          height: 300
+
+  # 库存报表
+  InventoryReport:
+    report_id: "inventory_report"
+    title: "库存报表"
+    description: "库存状态报表"
+    category: "inventory"
+    type: "scheduled"
+    schedule: "monthly"
+    format: ["pdf", "excel", "html"]
+    
+    sections:
+      - name: "inventory_summary"
+        title: "库存汇总"
+        type: "summary_table"
+        data_source: "inventory_summary"
+        columns:
+          - field: "category"
+            title: "物料分类"
+            type: "string"
+          - field: "total_items"
+            title: "物料种类数"
+            type: "integer"
+          - field: "total_quantity"
+            title: "总库存量"
+            type: "decimal"
+          - field: "total_value"
+            title: "库存总价值"
+            type: "currency"
+          - field: "avg_turnover"
+            title: "平均周转率"
+            type: "decimal"
+          - field: "slow_moving_items"
+            title: "滞销物料数"
+            type: "integer"
+      
+      - name: "abc_analysis"
+        title: "ABC分析"
+        type: "detail_table"
+        data_source: "abc_analysis_detail"
+        columns:
+          - field: "item_code"
+            title: "物料编码"
+            type: "string"
+          - field: "item_name"
+            title: "物料名称"
+            type: "string"
+          - field: "category"
+            title: "ABC分类"
+            type: "string"
+          - field: "annual_usage"
+            title: "年用量"
+            type: "decimal"
+          - field: "unit_cost"
+            title: "单价"
+            type: "currency"
+          - field: "annual_value"
+            title: "年价值"
+            type: "currency"
+          - field: "percentage"
+            title: "价值占比"
+            type: "percentage"
+          - field: "cumulative_percentage"
+            title: "累计占比"
+            type: "percentage"
+      
+      - name: "inventory_chart"
+        title: "库存分布图"
+        type: "pie_chart"
+        data_source: "inventory_distribution"
+        config:
+          dimension: "category"
+          metric: "value_percentage"
+          title: "库存价值分布"
+          height: 300
+
+  # 供应商绩效报表
+  SupplierPerformanceReport:
+    report_id: "supplier_perf_report"
+    title: "供应商绩效报表"
+    description: "供应商绩效评估报表"
+    category: "procurement"
+    type: "scheduled"
+    schedule: "monthly"
+    format: ["pdf", "excel", "html"]
+    
+    sections:
+      - name: "supplier_summary"
+        title: "供应商汇总"
+        type: "summary_table"
+        data_source: "supplier_summary"
+        columns:
+          - field: "supplier_name"
+            title: "供应商名称"
+            type: "string"
+          - field: "total_deliveries"
+            title: "总交货次数"
+            type: "integer"
+          - field: "on_time_deliveries"
+            title: "准时交货次数"
+            type: "integer"
+          - field: "delivery_performance"
+            title: "交货绩效"
+            type: "percentage"
+          - field: "quality_pass_rate"
+            title: "质量通过率"
+            type: "percentage"
+          - field: "overall_score"
+            title: "综合评分"
+            type: "decimal"
+          - field: "ranking"
+            title: "排名"
+            type: "integer"
+      
+      - name: "performance_chart"
+        title: "绩效对比图"
+        type: "radar_chart"
+        data_source: "supplier_performance_detail"
+        config:
+          metrics:
+            - name: "delivery_performance"
+              title: "交货绩效"
+            - name: "quality_pass_rate"
+              title: "质量通过率"
+            - name: "response_time"
+              title: "响应时间"
+            - name: "cost_competitiveness"
+              title: "成本竞争力"
+          title: "供应商绩效雷达图"
+          height: 300
+
+  # 成本分析报表
+  CostAnalysisReport:
+    report_id: "cost_analysis_report"
+    title: "成本分析报表"
+    description: "生产成本分析报表"
+    category: "finance"
+    type: "scheduled"
+    schedule: "monthly"
+    format: ["pdf", "excel", "html"]
+    
+    sections:
+      - name: "cost_summary"
+        title: "成本汇总"
+        type: "summary_table"
+        data_source: "cost_summary"
+        columns:
+          - field: "item_id"
+            title: "物料ID"
+            type: "string"
+          - field: "item_name"
+            title: "物料名称"
+            type: "string"
+          - field: "planned_cost"
+            title: "计划成本"
+            type: "currency"
+          - field: "actual_cost"
+            title: "实际成本"
+            type: "currency"
+          - field: "cost_variance"
+            title: "成本差异"
+            type: "currency"
+          - field: "variance_percentage"
+            title: "差异率"
+            type: "percentage"
+          - field: "material_cost"
+            title: "物料成本"
+            type: "currency"
+          - field: "labor_cost"
+            title: "人工成本"
+            type: "currency"
+          - field: "overhead_cost"
+            title: "制造费用"
+            type: "currency"
+      
+      - name: "cost_breakdown"
+        title: "成本构成分析"
+        type: "pie_chart"
+        data_source: "cost_breakdown"
+        config:
+          dimension: "cost_type"
+          metric: "amount"
+          title: "成本构成"
+          height: 300
+
+# 数据源定义
+data_sources:
+  production_summary:
+    type: "query"
+    sql: |
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as total_work_orders,
+        SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed_orders,
+        ROUND(SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as completion_rate,
+        SUM(actual_quantity) as total_quantity,
+        AVG(CASE WHEN status = 'COMPLETED' THEN 
+          (SELECT AVG(yield) FROM agg_yield_5m WHERE DATE(bucket_start) = DATE(wo.created_at))
+        END) as yield_rate,
+        AVG(CASE WHEN status = 'COMPLETED' THEN 
+          (SELECT AVG(efficiency) FROM agg_equipment_efficiency WHERE DATE(bucket_start) = DATE(wo.created_at))
+        END) as efficiency
+      FROM work_order wo
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    
+  work_order_details:
+    type: "query"
+    sql: |
+      SELECT 
+        wo.wo_id,
+        im.item_name,
+        wo.planned_quantity,
+        wo.actual_quantity,
+        ROUND(wo.actual_quantity * 100.0 / wo.planned_quantity, 2) as completion_rate,
+        wo.status,
+        wo.planned_start_date,
+        wo.actual_start_date,
+        wo.planned_end_date,
+        wo.actual_end_date
+      FROM work_order wo
+      JOIN item_master im ON wo.item_id = im.item_id
+      WHERE wo.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      ORDER BY wo.created_at DESC
+    
+  production_trend:
+    type: "query"
+    sql: |
+      SELECT 
+        DATE(wo.created_at) as date,
+        wo.item_id,
+        im.item_name,
+        SUM(wo.actual_quantity) as quantity
+      FROM work_order wo
+      JOIN item_master im ON wo.item_id = im.item_id
+      WHERE wo.status = 'COMPLETED'
+        AND wo.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY DATE(wo.created_at), wo.item_id, im.item_name
+      ORDER BY date DESC
+    
+  quality_summary:
+    type: "query"
+    sql: |
+      SELECT 
+        CONCAT(YEAR(created_at), '-W', WEEK(created_at)) as week,
+        COUNT(*) as total_inspections,
+        SUM(CASE WHEN result = 'PASS' THEN 1 ELSE 0 END) as pass_count,
+        SUM(CASE WHEN result = 'FAIL' THEN 1 ELSE 0 END) as fail_count,
+        ROUND(SUM(CASE WHEN result = 'PASS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as pass_rate,
+        AVG(CASE WHEN type = 'IQC' AND result = 'PASS' THEN 100.0 ELSE 0 END) as iqc_pass_rate,
+        AVG(CASE WHEN type = 'IPQC' AND result = 'PASS' THEN 100.0 ELSE 0 END) as ipqc_pass_rate,
+        AVG(CASE WHEN type = 'OQC' AND result = 'PASS' THEN 100.0 ELSE 0 END) as oqc_pass_rate
+      FROM inspection
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 WEEK)
+      GROUP BY YEAR(created_at), WEEK(created_at)
+      ORDER BY week DESC
+    
+  defect_analysis:
+    type: "query"
+    sql: |
+      SELECT 
+        ii.defect_code,
+        qc.description as defect_name,
+        qc.category,
+        COUNT(*) as occurrence_count,
+        ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM inspection_item WHERE result = 'FAIL'), 2) as percentage,
+        CASE 
+          WHEN COUNT(*) > LAG(COUNT(*)) OVER (ORDER BY COUNT(*) DESC) THEN '上升'
+          WHEN COUNT(*) < LAG(COUNT(*)) OVER (ORDER BY COUNT(*) DESC) THEN '下降'
+          ELSE '稳定'
+        END as trend
+      FROM inspection_item ii
+      JOIN qms_code qc ON ii.defect_code = qc.code AND qc.code_type = 'DEFECT'
+      WHERE ii.result = 'FAIL'
+        AND ii.created_at >= DATE_SUB(NOW(), INTERVAL 4 WEEK)
+      GROUP BY ii.defect_code, qc.description, qc.category
+      ORDER BY occurrence_count DESC
+    
+  quality_trend:
+    type: "query"
+    sql: |
+      SELECT 
+        DATE(created_at) as date,
+        type as inspection_type,
+        ROUND(SUM(CASE WHEN result = 'PASS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as pass_rate
+      FROM inspection
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY DATE(created_at), type
+      ORDER BY date DESC
+    
+  inventory_summary:
+    type: "query"
+    sql: |
+      SELECT 
+        im.item_type as category,
+        COUNT(DISTINCT s.item_id) as total_items,
+        SUM(s.quantity) as total_quantity,
+        SUM(s.total_cost) as total_value,
+        AVG(ait.turnover_rate) as avg_turnover,
+        SUM(CASE WHEN s.available_quantity <= s.min_stock_level THEN 1 ELSE 0 END) as slow_moving_items
+      FROM stock s
+      JOIN item_master im ON s.item_id = im.item_id
+      LEFT JOIN agg_inventory_turnover ait ON s.item_id = ait.item_id
+      WHERE s.status = 'AVAILABLE'
+      GROUP BY im.item_type
+      ORDER BY total_value DESC
+    
+  abc_analysis_detail:
+    type: "query"
+    sql: |
+      SELECT 
+        im.item_code,
+        im.item_name,
+        CASE 
+          WHEN cumulative_percentage <= 80 THEN 'A'
+          WHEN cumulative_percentage <= 95 THEN 'B'
+          ELSE 'C'
+        END as category,
+        annual_usage,
+        unit_cost,
+        annual_value,
+        percentage,
+        cumulative_percentage
+      FROM (
+        SELECT 
+          s.item_id,
+          im.item_code,
+          im.item_name,
+          s.quantity * 12 as annual_usage,
+          s.unit_cost,
+          (s.quantity * 12 * s.unit_cost) as annual_value,
+          ((s.quantity * 12 * s.unit_cost) / (SELECT SUM(quantity * 12 * unit_cost) FROM stock WHERE status = 'AVAILABLE')) * 100 as percentage,
+          SUM(((s.quantity * 12 * s.unit_cost) / (SELECT SUM(quantity * 12 * unit_cost) FROM stock WHERE status = 'AVAILABLE')) * 100) 
+            OVER (ORDER BY (s.quantity * 12 * s.unit_cost) DESC) as cumulative_percentage
+        FROM stock s
+        JOIN item_master im ON s.item_id = im.item_id
+        WHERE s.status = 'AVAILABLE'
+      ) t
+      ORDER BY annual_value DESC
+    
+  inventory_distribution:
+    type: "query"
+    sql: |
+      SELECT 
+        im.item_type as category,
+        SUM(s.total_cost) as value_percentage
+      FROM stock s
+      JOIN item_master im ON s.item_id = im.item_id
+      WHERE s.status = 'AVAILABLE'
+      GROUP BY im.item_type
+    
+  supplier_summary:
+    type: "query"
+    sql: |
+      SELECT 
+        sm.supplier_name,
+        COUNT(DISTINCT po.po_id) as total_deliveries,
+        SUM(CASE WHEN po.status = 'COMPLETED' AND po.actual_delivery_date <= po.expected_delivery_date THEN 1 ELSE 0 END) as on_time_deliveries,
+        ROUND(SUM(CASE WHEN po.status = 'COMPLETED' AND po.actual_delivery_date <= po.expected_delivery_date THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT po.po_id), 2) as delivery_performance,
+        AVG(sm.quality_rating * 20) as quality_pass_rate,
+        (AVG(sm.quality_rating * 20) + ROUND(SUM(CASE WHEN po.status = 'COMPLETED' AND po.actual_delivery_date <= po.expected_delivery_date THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT po.po_id), 2)) / 2 as overall_score,
+        ROW_NUMBER() OVER (ORDER BY (AVG(sm.quality_rating * 20) + ROUND(SUM(CASE WHEN po.status = 'COMPLETED' AND po.actual_delivery_date <= po.expected_delivery_date THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT po.po_id), 2)) / 2 DESC) as ranking
+      FROM supplier_master sm
+      LEFT JOIN purchase_order po ON sm.supplier_id = po.supplier_id
+      WHERE po.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+      GROUP BY sm.supplier_id, sm.supplier_name
+      ORDER BY overall_score DESC
+    
+  supplier_performance_detail:
+    type: "query"
+    sql: |
+      SELECT 
+        sm.supplier_name,
+        ROUND(SUM(CASE WHEN po.status = 'COMPLETED' AND po.actual_delivery_date <= po.expected_delivery_date THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT po.po_id), 2) as delivery_performance,
+        AVG(sm.quality_rating * 20) as quality_pass_rate,
+        AVG(DATEDIFF(po.actual_delivery_date, po.po_date)) as response_time,
+        AVG(po.total_amount / po.planned_quantity) as cost_competitiveness
+      FROM supplier_master sm
+      LEFT JOIN purchase_order po ON sm.supplier_id = po.supplier_id
+      WHERE po.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+      GROUP BY sm.supplier_id, sm.supplier_name
+    
+  cost_summary:
+    type: "query"
+    sql: |
+      SELECT 
+        wo.item_id,
+        im.item_name,
+        wo.planned_quantity * im.unit_cost as planned_cost,
+        wo.actual_quantity * im.unit_cost as actual_cost,
+        (wo.actual_quantity * im.unit_cost) - (wo.planned_quantity * im.unit_cost) as cost_variance,
+        ROUND(((wo.actual_quantity * im.unit_cost) - (wo.planned_quantity * im.unit_cost)) * 100.0 / (wo.planned_quantity * im.unit_cost), 2) as variance_percentage,
+        wo.actual_quantity * im.material_cost as material_cost,
+        wo.actual_quantity * im.labor_cost as labor_cost,
+        wo.actual_quantity * im.overhead_cost as overhead_cost
+      FROM work_order wo
+      JOIN item_master im ON wo.item_id = im.item_id
+      WHERE wo.status = 'COMPLETED'
+        AND wo.created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+      ORDER BY cost_variance DESC
+    
+  cost_breakdown:
+    type: "query"
+    sql: |
+      SELECT 
+        '物料成本' as cost_type,
+        SUM(wo.actual_quantity * im.material_cost) as amount
+      FROM work_order wo
+      JOIN item_master im ON wo.item_id = im.item_id
+      WHERE wo.status = 'COMPLETED'
+        AND wo.created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+      UNION ALL
+      SELECT 
+        '人工成本' as cost_type,
+        SUM(wo.actual_quantity * im.labor_cost) as amount
+      FROM work_order wo
+      JOIN item_master im ON wo.item_id = im.item_id
+      WHERE wo.status = 'COMPLETED'
+        AND wo.created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+      UNION ALL
+      SELECT 
+        '制造费用' as cost_type,
+        SUM(wo.actual_quantity * im.overhead_cost) as amount
+      FROM work_order wo
+      JOIN item_master im ON wo.item_id = im.item_id
+      WHERE wo.status = 'COMPLETED'
+        AND wo.created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+
+# 报表配置
+report_config:
+  default_format: "pdf"
+  logo_path: "/assets/images/company_logo.png"
+  header:
+    company_name: "MES制造执行系统"
+    report_title: "系统报表"
+    generated_at: true
+    generated_by: true
+  footer:
+    page_numbers: true
+    confidentiality: "机密文档"
+  styling:
+    font_family: "Microsoft YaHei"
+    font_size: 10
+    line_height: 1.2
+    margins:
+      top: 20
+      bottom: 20
+      left: 20
+      right: 20
+    colors:
+      primary: "#2196F3"
+      secondary: "#4CAF50"
+      accent: "#FF9800"
+      danger: "#F44336"
+
+# 权限控制
+permissions:
+  ProductionReport:
+    roles: ["production_manager", "line_supervisor"]
+    
+  QualityReport:
+    roles: ["quality_manager", "qc_inspector", "quality_engineer"]
+    
+  InventoryReport:
+    roles: ["warehouse_manager", "inventory_clerk", "finance_manager"]
+    
+  SupplierPerformanceReport:
+    roles: ["procurement_manager", "quality_manager", "finance_manager"]
+    
+  CostAnalysisReport:
+    roles: ["finance_manager", "production_manager", "general_manager"]
