@@ -664,10 +664,7 @@ CREATE INDEX idx_repair_technician_date ON repair_record (repair_technician, rep
 
 -- 2. 分区优化
 -- 对大表按时间分区
-ALTER TABLE repair_record PARTITION BY RANGE (YEAR(repair_start_time)) (
-    PARTITION p2023 VALUES LESS THAN (2024),
-    PARTITION p2024 VALUES LESS THAN (2025),
-    PARTITION p2025 VALUES LESS THAN (2026)
+-- 维修记录表优化索引
 );
 
 -- 3. 查询优化

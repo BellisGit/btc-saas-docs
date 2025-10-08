@@ -347,11 +347,25 @@ CREATE INDEX idx_audit_logs_user_id ON audit_logs (user_id);
 CREATE INDEX idx_audit_logs_timestamp ON audit_logs (operation_timestamp);
 
 -- 创建审计日志分区（按月分区）
-CREATE TABLE audit_logs_y2025m01 PARTITION OF audit_logs
-    FOR VALUES FROM ('2025-01-01') TO ('2025-02-01');
-
-CREATE TABLE audit_logs_y2025m02 PARTITION OF audit_logs
-    FOR VALUES FROM ('2025-02-01') TO ('2025-03-01');
+-- 审计日志表创建
+CREATE TABLE audit_logs (
+    log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id VARCHAR(32) NOT NULL,
+    user_id VARCHAR(32) NOT NULL,
+    operation_type VARCHAR(32) NOT NULL,
+    table_name VARCHAR(64),
+    record_id VARCHAR(32),
+    old_values JSON,
+    new_values JSON,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_tenant_user (tenant_id, user_id),
+    INDEX idx_operation_type (operation_type),
+    INDEX idx_table_record (table_name, record_id),
+    INDEX idx_created_at (created_at)
+);
 ```
 
 #### 审计触发器

@@ -211,11 +211,6 @@ CREATE TABLE trace_event (
     INDEX idx_occurred_at (occurred_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='追溯事件表'
-PARTITION BY RANGE (TO_DAYS(occurred_at)) (
-    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
-    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
-    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
-    PARTITION p_future VALUES LESS THAN MAXVALUE
 );
 ```
 
@@ -286,11 +281,6 @@ CREATE INDEX idx_trace_operator_time ON trace_event(operator_id, occurred_at);
 **分区示例**：
 ```sql
 -- 按月分区
-PARTITION BY RANGE (TO_DAYS(occurred_at)) (
-    PARTITION p202501 VALUES LESS THAN (TO_DAYS('2025-02-01')),
-    PARTITION p202502 VALUES LESS THAN (TO_DAYS('2025-03-01')),
-    PARTITION p202503 VALUES LESS THAN (TO_DAYS('2025-04-01')),
-    PARTITION p_future VALUES LESS THAN MAXVALUE
 );
 ```
 
@@ -553,7 +543,7 @@ CREATE TABLE sensitive_data (
 ## 扩展性设计
 
 ### 1. 水平扩展
-- **分库分表**：按租户或时间分片
+- **分库分表**：按租户分库
 - **读写分离**：主从复制
 - **负载均衡**：多实例部署
 
@@ -563,6 +553,6 @@ CREATE TABLE sensitive_data (
 - **存储优化**：表空间管理
 
 ### 3. 微服务架构
-- **数据分片**：按业务域分库
+- **数据分库**：按业务域分库
 - **服务隔离**：独立数据库实例
 - **数据同步**：事件驱动同步

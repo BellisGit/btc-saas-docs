@@ -1,10 +1,10 @@
 -- ==============================================
--- BTC日志数据库 - 系统和监控日志表
+-- BTC日志数据�?- 系统和监控日志表
 -- ==============================================
 
 USE btc_log;
 
--- 系统监控日志表
+-- 系统监控日志�?
 CREATE TABLE system_monitor_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
     tenant_id VARCHAR(32) COMMENT '租户ID',
@@ -13,12 +13,12 @@ CREATE TABLE system_monitor_log (
     monitor_name VARCHAR(128) NOT NULL COMMENT '监控名称',
     monitor_category VARCHAR(64) COMMENT '监控分类',
     metric_name VARCHAR(128) NOT NULL COMMENT '指标名称',
-    metric_value DECIMAL(18,4) COMMENT '指标值',
+    metric_value DECIMAL(18,4) COMMENT '指标�?,
     metric_unit VARCHAR(16) COMMENT '指标单位',
-    threshold_value DECIMAL(18,4) COMMENT '阈值',
-    threshold_type ENUM('GT', 'LT', 'EQ', 'GTE', 'LTE', 'NE') COMMENT '阈值类型',
+    threshold_value DECIMAL(18,4) COMMENT '阈�?,
+    threshold_type ENUM('GT', 'LT', 'EQ', 'GTE', 'LTE', 'NE') COMMENT '阈值类�?,
     alert_level ENUM('INFO', 'WARNING', 'ERROR', 'CRITICAL') DEFAULT 'INFO' COMMENT '告警级别',
-    alert_status ENUM('NORMAL', 'ALERT', 'RESOLVED') DEFAULT 'NORMAL' COMMENT '告警状态',
+    alert_status ENUM('NORMAL', 'ALERT', 'RESOLVED') DEFAULT 'NORMAL' COMMENT '告警状�?,
     alert_message TEXT COMMENT '告警消息',
     monitor_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '监控时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -30,9 +30,9 @@ CREATE TABLE system_monitor_log (
     INDEX idx_alert_level (alert_level),
     INDEX idx_alert_status (alert_status),
     INDEX idx_monitor_time (monitor_time)
-) COMMENT '系统监控日志表';
+) COMMENT '系统监控日志�?;
 
--- 告警日志表
+-- 告警日志�?
 CREATE TABLE alert_log (
     alert_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '告警ID',
     tenant_id VARCHAR(32) COMMENT '租户ID',
@@ -40,11 +40,11 @@ CREATE TABLE alert_log (
     alert_no VARCHAR(64) NOT NULL UNIQUE COMMENT '告警单号',
     alert_type VARCHAR(32) NOT NULL COMMENT '告警类型',
     alert_category VARCHAR(64) COMMENT '告警分类',
-    alert_source VARCHAR(64) COMMENT '告警源',
+    alert_source VARCHAR(64) COMMENT '告警�?,
     alert_level ENUM('INFO', 'WARNING', 'ERROR', 'CRITICAL', 'FATAL') NOT NULL COMMENT '告警级别',
     alert_title VARCHAR(255) NOT NULL COMMENT '告警标题',
     alert_content TEXT NOT NULL COMMENT '告警内容',
-    alert_status ENUM('ACTIVE', 'ACKNOWLEDGED', 'RESOLVED', 'SUPPRESSED') DEFAULT 'ACTIVE' COMMENT '告警状态',
+    alert_status ENUM('ACTIVE', 'ACKNOWLEDGED', 'RESOLVED', 'SUPPRESSED') DEFAULT 'ACTIVE' COMMENT '告警状�?,
     acknowledge_user VARCHAR(64) COMMENT '确认用户',
     acknowledge_time DATETIME COMMENT '确认时间',
     resolve_user VARCHAR(64) COMMENT '解决用户',
@@ -64,9 +64,9 @@ CREATE TABLE alert_log (
     INDEX idx_alert_source (alert_source),
     INDEX idx_alert_time (alert_time),
     INDEX idx_related_entity (related_entity_type, related_entity_id)
-) COMMENT '告警日志表';
+) COMMENT '告警日志�?;
 
--- 系统任务执行日志表
+-- 系统任务执行日志�?
 CREATE TABLE sys_job_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
     tenant_id VARCHAR(32) COMMENT '租户ID',
@@ -74,8 +74,8 @@ CREATE TABLE sys_job_log (
     job_name VARCHAR(128) NOT NULL COMMENT '任务名称',
     job_group VARCHAR(64) NOT NULL COMMENT '任务分组',
     job_class VARCHAR(255) COMMENT '任务类名',
-    execution_status ENUM('SUCCESS', 'FAILED', 'RUNNING', 'CANCELLED') DEFAULT 'SUCCESS' COMMENT '执行状态',
-    start_time DATETIME NOT NULL COMMENT '开始时间',
+    execution_status ENUM('SUCCESS', 'FAILED', 'RUNNING', 'CANCELLED') DEFAULT 'SUCCESS' COMMENT '执行状�?,
+    start_time DATETIME NOT NULL COMMENT '开始时�?,
     end_time DATETIME COMMENT '结束时间',
     execution_time BIGINT COMMENT '执行时间(ms)',
     run_count INT DEFAULT 1 COMMENT '执行次数',
@@ -89,9 +89,9 @@ CREATE TABLE sys_job_log (
     INDEX idx_job_group (job_group),
     INDEX idx_execution_status (execution_status),
     INDEX idx_start_time (start_time)
-) COMMENT '系统任务执行日志表';
+) COMMENT '系统任务执行日志�?;
 
--- 接口调用日志表
+-- 接口调用日志�?
 CREATE TABLE api_call_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
     tenant_id VARCHAR(32) COMMENT '租户ID',
@@ -101,15 +101,15 @@ CREATE TABLE api_call_log (
     http_method VARCHAR(10) NOT NULL COMMENT 'HTTP方法',
     request_id VARCHAR(64) COMMENT '请求ID',
     user_id VARCHAR(32) COMMENT '用户ID',
-    username VARCHAR(64) COMMENT '用户名',
+    username VARCHAR(64) COMMENT '用户�?,
     request_ip VARCHAR(45) COMMENT '请求IP',
     user_agent VARCHAR(500) COMMENT '用户代理',
     request_params TEXT COMMENT '请求参数',
-    request_body TEXT COMMENT '请求体',
+    request_body TEXT COMMENT '请求�?,
     response_status INT COMMENT '响应状态码',
-    response_body TEXT COMMENT '响应体',
+    response_body TEXT COMMENT '响应�?,
     response_time BIGINT COMMENT '响应时间(ms)',
-    call_status ENUM('SUCCESS', 'FAILED', 'TIMEOUT') DEFAULT 'SUCCESS' COMMENT '调用状态',
+    call_status ENUM('SUCCESS', 'FAILED', 'TIMEOUT') DEFAULT 'SUCCESS' COMMENT '调用状�?,
     error_code VARCHAR(32) COMMENT '错误代码',
     error_message TEXT COMMENT '错误信息',
     call_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '调用时间',
@@ -124,7 +124,7 @@ CREATE TABLE api_call_log (
     INDEX idx_call_status (call_status),
     INDEX idx_response_status (response_status),
     INDEX idx_call_time (call_time)
-) COMMENT '接口调用日志表';
+) COMMENT '接口调用日志�?;
 
 -- 数据库操作日志表
 CREATE TABLE database_operation_log (
@@ -137,10 +137,10 @@ CREATE TABLE database_operation_log (
     sql_statement TEXT COMMENT 'SQL语句',
     affected_rows INT DEFAULT 0 COMMENT '影响行数',
     execution_time BIGINT COMMENT '执行时间(ms)',
-    operation_status ENUM('SUCCESS', 'FAILED', 'TIMEOUT') DEFAULT 'SUCCESS' COMMENT '操作状态',
+    operation_status ENUM('SUCCESS', 'FAILED', 'TIMEOUT') DEFAULT 'SUCCESS' COMMENT '操作状�?,
     error_message TEXT COMMENT '错误信息',
     user_id VARCHAR(32) COMMENT '用户ID',
-    username VARCHAR(64) COMMENT '用户名',
+    username VARCHAR(64) COMMENT '用户�?,
     ip_address VARCHAR(45) COMMENT 'IP地址',
     operation_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -154,20 +154,20 @@ CREATE TABLE database_operation_log (
     INDEX idx_operation_time (operation_time)
 ) COMMENT '数据库操作日志表';
 
--- 缓存操作日志表
+-- 缓存操作日志�?
 CREATE TABLE cache_operation_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
     tenant_id VARCHAR(32) COMMENT '租户ID',
     site_id VARCHAR(32) COMMENT '站点ID',
     cache_type VARCHAR(32) NOT NULL COMMENT '缓存类型',
-    cache_key VARCHAR(255) NOT NULL COMMENT '缓存键',
+    cache_key VARCHAR(255) NOT NULL COMMENT '缓存�?,
     operation_type ENUM('GET', 'SET', 'DELETE', 'EXPIRE', 'CLEAR') NOT NULL COMMENT '操作类型',
-    key_size INT COMMENT '键大小',
-    value_size INT COMMENT '值大小',
+    key_size INT COMMENT '键大�?,
+    value_size INT COMMENT '值大�?,
     ttl_seconds INT COMMENT 'TTL秒数',
-    hit_status ENUM('HIT', 'MISS') COMMENT '命中状态',
+    hit_status ENUM('HIT', 'MISS') COMMENT '命中状�?,
     operation_time BIGINT COMMENT '操作时间(ms)',
-    operation_status ENUM('SUCCESS', 'FAILED') DEFAULT 'SUCCESS' COMMENT '操作状态',
+    operation_status ENUM('SUCCESS', 'FAILED') DEFAULT 'SUCCESS' COMMENT '操作状�?,
     error_message TEXT COMMENT '错误信息',
     user_id VARCHAR(32) COMMENT '用户ID',
     ip_address VARCHAR(45) COMMENT 'IP地址',
@@ -182,9 +182,9 @@ CREATE TABLE cache_operation_log (
     INDEX idx_operation_status (operation_status),
     INDEX idx_user_id (user_id),
     INDEX idx_operation_time (operation_time)
-) COMMENT '缓存操作日志表';
+) COMMENT '缓存操作日志�?;
 
--- 消息队列日志表
+-- 消息队列日志�?
 CREATE TABLE message_queue_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
     tenant_id VARCHAR(32) COMMENT '租户ID',
@@ -197,12 +197,12 @@ CREATE TABLE message_queue_log (
     operation_type ENUM('SEND', 'RECEIVE', 'ACK', 'NACK', 'REJECT') NOT NULL COMMENT '操作类型',
     producer_id VARCHAR(64) COMMENT '生产者ID',
     consumer_id VARCHAR(64) COMMENT '消费者ID',
-    priority INT DEFAULT 0 COMMENT '优先级',
+    priority INT DEFAULT 0 COMMENT '优先�?,
     delay_seconds INT DEFAULT 0 COMMENT '延迟秒数',
     retry_count INT DEFAULT 0 COMMENT '重试次数',
-    max_retry_count INT DEFAULT 3 COMMENT '最大重试次数',
+    max_retry_count INT DEFAULT 3 COMMENT '最大重试次�?,
     processing_time BIGINT COMMENT '处理时间(ms)',
-    operation_status ENUM('SUCCESS', 'FAILED', 'TIMEOUT', 'RETRY') DEFAULT 'SUCCESS' COMMENT '操作状态',
+    operation_status ENUM('SUCCESS', 'FAILED', 'TIMEOUT', 'RETRY') DEFAULT 'SUCCESS' COMMENT '操作状�?,
     error_message TEXT COMMENT '错误信息',
     operation_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -216,21 +216,21 @@ CREATE TABLE message_queue_log (
     INDEX idx_producer_id (producer_id),
     INDEX idx_consumer_id (consumer_id),
     INDEX idx_operation_time (operation_time)
-) COMMENT '消息队列日志表';
+) COMMENT '消息队列日志�?;
 
--- 系统性能监控日志表
+-- 系统性能监控日志�?
 CREATE TABLE system_performance_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
     tenant_id VARCHAR(32) COMMENT '租户ID',
     site_id VARCHAR(32) COMMENT '站点ID',
-    server_name VARCHAR(128) NOT NULL COMMENT '服务器名称',
+    server_name VARCHAR(128) NOT NULL COMMENT '服务器名�?,
     server_ip VARCHAR(45) COMMENT '服务器IP',
     metric_category VARCHAR(64) NOT NULL COMMENT '指标分类',
     metric_name VARCHAR(128) NOT NULL COMMENT '指标名称',
-    metric_value DECIMAL(18,4) NOT NULL COMMENT '指标值',
+    metric_value DECIMAL(18,4) NOT NULL COMMENT '指标�?,
     metric_unit VARCHAR(16) COMMENT '指标单位',
-    threshold_warning DECIMAL(18,4) COMMENT '警告阈值',
-    threshold_critical DECIMAL(18,4) COMMENT '严重阈值',
+    threshold_warning DECIMAL(18,4) COMMENT '警告阈�?,
+    threshold_critical DECIMAL(18,4) COMMENT '严重阈�?,
     alert_level ENUM('NORMAL', 'WARNING', 'CRITICAL') DEFAULT 'NORMAL' COMMENT '告警级别',
     collection_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '采集时间',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -242,4 +242,5 @@ CREATE TABLE system_performance_log (
     INDEX idx_metric_name (metric_name),
     INDEX idx_alert_level (alert_level),
     INDEX idx_collection_time (collection_time)
-) COMMENT '系统性能监控日志表';
+) COMMENT '系统性能监控日志�?;
+

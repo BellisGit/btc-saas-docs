@@ -68,8 +68,7 @@ binlog_format = ROW
 expire_logs_days = 7
 max_binlog_size = 100M
 
-# 分区支持
-partition = ON
+# 数据管理
 ```
 
 ## 部署步骤

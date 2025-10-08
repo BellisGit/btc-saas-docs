@@ -1,14 +1,14 @@
 -- ==============================================
--- BTC核心数据库 - 系统基础表（支持角色继承）
+-- BTC核心数据�?- 系统基础表（支持角色继承�?
 -- 权限和菜单分离，角色支持继承
--- 作者: MES开发团队
+-- 作�? MES开发团�?
 -- 日期: 2025-01-07
 -- ==============================================
 
 USE btc_core;
 
 -- ==============================================
--- 1. 租户管理表
+-- 1. 租户管理�?
 -- ==============================================
 
 CREATE TABLE tenant (
@@ -16,8 +16,8 @@ CREATE TABLE tenant (
     tenant_code VARCHAR(64) NOT NULL UNIQUE COMMENT '租户代码',
     tenant_name VARCHAR(128) NOT NULL COMMENT '租户名称',
     tenant_type ENUM('ENTERPRISE', 'SMALL_MEDIUM', 'INDIVIDUAL') DEFAULT 'ENTERPRISE' COMMENT '租户类型',
-    status ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE' COMMENT '状态',
-    contact_person VARCHAR(64) COMMENT '联系人',
+    status ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE' COMMENT '状�?,
+    contact_person VARCHAR(64) COMMENT '联系�?,
     contact_phone VARCHAR(32) COMMENT '联系电话',
     contact_email VARCHAR(128) COMMENT '联系邮箱',
     address TEXT COMMENT '地址',
@@ -35,10 +35,10 @@ CREATE TABLE tenant (
     INDEX idx_tenant_name (tenant_name),
     INDEX idx_status (status),
     INDEX idx_subscription_expire (subscription_expire)
-) COMMENT '租户管理表';
+) COMMENT '租户管理�?;
 
 -- ==============================================
--- 2. 部门表
+-- 2. 部门�?
 -- ==============================================
 
 CREATE TABLE sys_dept (
@@ -50,7 +50,7 @@ CREATE TABLE sys_dept (
     dept_type ENUM('COMPANY', 'DEPARTMENT', 'TEAM', 'GROUP') DEFAULT 'DEPARTMENT' COMMENT '部门类型',
     manager_id VARCHAR(32) COMMENT '部门负责人ID',
     sort_order INT DEFAULT 0 COMMENT '排序',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
+    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状�?,
     created_by VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(64),
@@ -60,28 +60,28 @@ CREATE TABLE sys_dept (
     INDEX idx_status (status),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
     FOREIGN KEY (parent_id) REFERENCES sys_dept(dept_id)
-) COMMENT '部门表';
+) COMMENT '部门�?;
 
 -- ==============================================
--- 3. 系统用户表
+-- 3. 系统用户�?
 -- ==============================================
 
 CREATE TABLE sys_user (
     user_id VARCHAR(32) PRIMARY KEY COMMENT '用户ID',
     tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
     dept_id VARCHAR(32) COMMENT '部门ID',
-    username VARCHAR(64) NOT NULL UNIQUE COMMENT '用户名',
+    username VARCHAR(64) NOT NULL UNIQUE COMMENT '用户�?,
     password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希',
     email VARCHAR(128) COMMENT '邮箱',
-    phone VARCHAR(32) COMMENT '手机号',
+    phone VARCHAR(32) COMMENT '手机�?,
     real_name VARCHAR(64) COMMENT '真实姓名',
     nickname VARCHAR(64) COMMENT '昵称',
     avatar_url VARCHAR(255) COMMENT '头像URL',
     gender ENUM('MALE', 'FEMALE', 'UNKNOWN') DEFAULT 'UNKNOWN' COMMENT '性别',
     birthday DATE COMMENT '生日',
-    status ENUM('ACTIVE', 'INACTIVE', 'LOCKED', 'EXPIRED') DEFAULT 'ACTIVE' COMMENT '状态',
+    status ENUM('ACTIVE', 'INACTIVE', 'LOCKED', 'EXPIRED') DEFAULT 'ACTIVE' COMMENT '状�?,
     user_type ENUM('SYSTEM', 'TENANT', 'EMPLOYEE', 'EXTERNAL') DEFAULT 'TENANT' COMMENT '用户类型',
-    last_login_time DATETIME COMMENT '最后登录时间',
+    last_login_time DATETIME COMMENT '最后登录时�?,
     last_login_ip VARCHAR(45) COMMENT '最后登录IP',
     login_count INT DEFAULT 0 COMMENT '登录次数',
     password_update_time DATETIME COMMENT '密码更新时间',
@@ -100,10 +100,10 @@ CREATE TABLE sys_user (
     INDEX idx_user_type (user_type),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
     FOREIGN KEY (dept_id) REFERENCES sys_dept(dept_id)
-) COMMENT '系统用户表';
+) COMMENT '系统用户�?;
 
 -- ==============================================
--- 4. 系统角色表（支持继承）
+-- 4. 系统角色表（支持继承�?
 -- ==============================================
 
 CREATE TABLE sys_role (
@@ -116,9 +116,9 @@ CREATE TABLE sys_role (
     role_level INT DEFAULT 0 COMMENT '角色层级',
     description TEXT COMMENT '角色描述',
     data_scope ENUM('ALL', 'CUSTOM', 'DEPT', 'DEPT_AND_CHILD', 'SELF') DEFAULT 'SELF' COMMENT '数据权限范围',
-    inherit_permissions BOOLEAN DEFAULT TRUE COMMENT '是否继承父角色权限',
-    inherit_data_scope BOOLEAN DEFAULT FALSE COMMENT '是否继承父角色数据权限',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
+    inherit_permissions BOOLEAN DEFAULT TRUE COMMENT '是否继承父角色权�?,
+    inherit_data_scope BOOLEAN DEFAULT FALSE COMMENT '是否继承父角色数据权�?,
+    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状�?,
     sort_order INT DEFAULT 0 COMMENT '排序',
     created_by VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -132,10 +132,10 @@ CREATE TABLE sys_role (
     INDEX idx_status (status),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
     FOREIGN KEY (parent_role_id) REFERENCES sys_role(role_id)
-) COMMENT '系统角色表';
+) COMMENT '系统角色�?;
 
 -- ==============================================
--- 5. 系统权限表（专注权限控制）
+-- 5. 系统权限表（专注权限控制�?
 -- ==============================================
 
 CREATE TABLE sys_permission (
@@ -150,7 +150,7 @@ CREATE TABLE sys_permission (
     scope ENUM('GLOBAL', 'TENANT', 'DEPT', 'SELF') DEFAULT 'TENANT' COMMENT '权限范围',
     parent_id VARCHAR(32) COMMENT '父权限ID',
     description TEXT COMMENT '权限描述',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
+    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状�?,
     created_by VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(64),
@@ -163,10 +163,10 @@ CREATE TABLE sys_permission (
     INDEX idx_status (status),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
     FOREIGN KEY (parent_id) REFERENCES sys_permission(permission_id)
-) COMMENT '系统权限表';
+) COMMENT '系统权限�?;
 
 -- ==============================================
--- 6. 系统菜单表（专注界面导航）
+-- 6. 系统菜单表（专注界面导航�?
 -- ==============================================
 
 CREATE TABLE sys_menu (
@@ -184,7 +184,7 @@ CREATE TABLE sys_menu (
     keep_alive BOOLEAN DEFAULT FALSE COMMENT '是否缓存',
     external_link BOOLEAN DEFAULT FALSE COMMENT '是否外链',
     external_url VARCHAR(500) COMMENT '外链地址',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
+    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状�?,
     created_by VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(64),
@@ -196,7 +196,7 @@ CREATE TABLE sys_menu (
     INDEX idx_status (status),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
     FOREIGN KEY (parent_id) REFERENCES sys_menu(menu_id)
-) COMMENT '系统菜单表';
+) COMMENT '系统菜单�?;
 
 -- ==============================================
 -- 7. 菜单权限关联表（关联菜单和权限）
@@ -214,10 +214,10 @@ CREATE TABLE sys_menu_permission (
     UNIQUE KEY uk_menu_permission (menu_id, permission_id),
     FOREIGN KEY (menu_id) REFERENCES sys_menu(menu_id),
     FOREIGN KEY (permission_id) REFERENCES sys_permission(permission_id)
-) COMMENT '菜单权限关联表';
+) COMMENT '菜单权限关联�?;
 
 -- ==============================================
--- 8. 用户角色关联表
+-- 8. 用户角色关联�?
 -- ==============================================
 
 CREATE TABLE sys_user_role (
@@ -231,10 +231,10 @@ CREATE TABLE sys_user_role (
     UNIQUE KEY uk_user_role (user_id, role_id),
     FOREIGN KEY (user_id) REFERENCES sys_user(user_id),
     FOREIGN KEY (role_id) REFERENCES sys_role(role_id)
-) COMMENT '用户角色关联表';
+) COMMENT '用户角色关联�?;
 
 -- ==============================================
--- 9. 角色权限关联表
+-- 9. 角色权限关联�?
 -- ==============================================
 
 CREATE TABLE sys_role_permission (
@@ -248,13 +248,13 @@ CREATE TABLE sys_role_permission (
     UNIQUE KEY uk_role_permission (role_id, permission_id),
     FOREIGN KEY (role_id) REFERENCES sys_role(role_id),
     FOREIGN KEY (permission_id) REFERENCES sys_permission(permission_id)
-) COMMENT '角色权限关联表';
+) COMMENT '角色权限关联�?;
 
 -- ==============================================
 -- 10. 角色继承管理存储过程
 -- ==============================================
 
--- 检查角色继承循环
+-- 检查角色继承循�?
 DELIMITER $$
 
 CREATE PROCEDURE CheckRoleInheritanceCycle(IN p_role_id VARCHAR(32))
@@ -325,7 +325,7 @@ BEGIN
         
         UNION ALL
         
-        -- 子角色
+        -- 子角�?
         SELECT 
             r.role_id,
             r.parent_role_id,
@@ -341,7 +341,7 @@ END$$
 DELIMITER ;
 
 -- ==============================================
--- 11. 初始化数据
+-- 11. 初始化数�?
 -- ==============================================
 
 -- 插入默认租户
@@ -352,23 +352,23 @@ VALUES ('TENANT_001', 'DEFAULT', '默认租户', 'ENTERPRISE', 'ACTIVE', 'SYSTEM
 INSERT INTO sys_dept (dept_id, tenant_id, dept_code, dept_name, dept_type, created_by)
 VALUES ('DEPT_001', 'TENANT_001', 'DEFAULT', '默认部门', 'DEPARTMENT', 'SYSTEM');
 
--- 插入系统管理员用户
+-- 插入系统管理员用�?
 INSERT INTO sys_user (user_id, tenant_id, dept_id, username, password_hash, real_name, user_type, status, created_by)
-VALUES ('USER_001', 'TENANT_001', 'DEPT_001', 'admin', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '系统管理员', 'SYSTEM', 'ACTIVE', 'SYSTEM');
+VALUES ('USER_001', 'TENANT_001', 'DEPT_001', 'admin', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '系统管理�?, 'SYSTEM', 'ACTIVE', 'SYSTEM');
 
 -- 插入层级角色数据
 INSERT INTO sys_role (role_id, tenant_id, parent_role_id, role_code, role_name, role_type, role_level, data_scope, inherit_permissions, inherit_data_scope, created_by) VALUES
--- 系统级角色
-('ROLE_SYS_ADMIN', 'TENANT_001', NULL, 'SYSTEM_ADMIN', '系统管理员', 'SYSTEM', 1, 'ALL', FALSE, FALSE, 'SYSTEM'),
+-- 系统级角�?
+('ROLE_SYS_ADMIN', 'TENANT_001', NULL, 'SYSTEM_ADMIN', '系统管理�?, 'SYSTEM', 1, 'ALL', FALSE, FALSE, 'SYSTEM'),
 
--- 租户级角色
-('ROLE_TENANT_ADMIN', 'TENANT_001', 'ROLE_SYS_ADMIN', 'TENANT_ADMIN', '租户管理员', 'TENANT', 2, 'ALL', TRUE, FALSE, 'SYSTEM'),
+-- 租户级角�?
+('ROLE_TENANT_ADMIN', 'TENANT_001', 'ROLE_SYS_ADMIN', 'TENANT_ADMIN', '租户管理�?, 'TENANT', 2, 'ALL', TRUE, FALSE, 'SYSTEM'),
 ('ROLE_DEPT_MANAGER', 'TENANT_001', 'ROLE_TENANT_ADMIN', 'DEPT_MANAGER', '部门经理', 'TENANT', 3, 'DEPT_AND_CHILD', TRUE, TRUE, 'SYSTEM'),
-('ROLE_TEAM_LEADER', 'TENANT_001', 'ROLE_DEPT_MANAGER', 'TEAM_LEADER', '团队负责人', 'TENANT', 4, 'DEPT', TRUE, TRUE, 'SYSTEM'),
-('ROLE_EMPLOYEE', 'TENANT_001', 'ROLE_TEAM_LEADER', 'EMPLOYEE', '普通员工', 'TENANT', 5, 'SELF', TRUE, TRUE, 'SYSTEM'),
+('ROLE_TEAM_LEADER', 'TENANT_001', 'ROLE_DEPT_MANAGER', 'TEAM_LEADER', '团队负责�?, 'TENANT', 4, 'DEPT', TRUE, TRUE, 'SYSTEM'),
+('ROLE_EMPLOYEE', 'TENANT_001', 'ROLE_TEAM_LEADER', 'EMPLOYEE', '普通员�?, 'TENANT', 5, 'SELF', TRUE, TRUE, 'SYSTEM'),
 
 -- 功能角色
-('ROLE_HR_ADMIN', 'TENANT_001', 'ROLE_TENANT_ADMIN', 'HR_ADMIN', 'HR管理员', 'CUSTOM', 2, 'DEPT_AND_CHILD', TRUE, FALSE, 'SYSTEM'),
+('ROLE_HR_ADMIN', 'TENANT_001', 'ROLE_TENANT_ADMIN', 'HR_ADMIN', 'HR管理�?, 'CUSTOM', 2, 'DEPT_AND_CHILD', TRUE, FALSE, 'SYSTEM'),
 ('ROLE_HR_SPECIALIST', 'TENANT_001', 'ROLE_HR_ADMIN', 'HR_SPECIALIST', 'HR专员', 'CUSTOM', 3, 'DEPT', TRUE, TRUE, 'SYSTEM');
 
 -- 插入权限数据
@@ -401,19 +401,19 @@ UPDATE sys_menu SET parent_id = 'MENU_002' WHERE menu_id IN ('MENU_003', 'MENU_0
 
 -- 插入菜单权限关联
 INSERT INTO sys_menu_permission (menu_id, permission_id, relation_type, created_by) VALUES
-('MENU_001', 'PERM_008', 'REQUIRED', 'SYSTEM'),  -- 系统管理菜单需要系统管理权限
-('MENU_002', 'PERM_001', 'REQUIRED', 'SYSTEM'),  -- 用户管理菜单需要用户查看权限
-('MENU_003', 'PERM_002', 'REQUIRED', 'SYSTEM'),  -- 新增用户按钮需要用户新增权限
-('MENU_004', 'PERM_003', 'REQUIRED', 'SYSTEM'),  -- 编辑用户按钮需要用户编辑权限
-('MENU_005', 'PERM_004', 'REQUIRED', 'SYSTEM'),  -- 删除用户按钮需要用户删除权限
-('MENU_007', 'PERM_010', 'REQUIRED', 'SYSTEM'),  -- 部门管理菜单需要部门管理权限
-('MENU_008', 'PERM_009', 'REQUIRED', 'SYSTEM');  -- 租户管理菜单需要租户管理权限
+('MENU_001', 'PERM_008', 'REQUIRED', 'SYSTEM'),  -- 系统管理菜单需要系统管理权�?
+('MENU_002', 'PERM_001', 'REQUIRED', 'SYSTEM'),  -- 用户管理菜单需要用户查看权�?
+('MENU_003', 'PERM_002', 'REQUIRED', 'SYSTEM'),  -- 新增用户按钮需要用户新增权�?
+('MENU_004', 'PERM_003', 'REQUIRED', 'SYSTEM'),  -- 编辑用户按钮需要用户编辑权�?
+('MENU_005', 'PERM_004', 'REQUIRED', 'SYSTEM'),  -- 删除用户按钮需要用户删除权�?
+('MENU_007', 'PERM_010', 'REQUIRED', 'SYSTEM'),  -- 部门管理菜单需要部门管理权�?
+('MENU_008', 'PERM_009', 'REQUIRED', 'SYSTEM');  -- 租户管理菜单需要租户管理权�?
 
 -- 关联用户角色
 INSERT INTO sys_user_role (user_id, role_id, created_by)
 VALUES ('USER_001', 'ROLE_SYS_ADMIN', 'SYSTEM');
 
--- 为系统管理员分配所有权限
+-- 为系统管理员分配所有权�?
 INSERT INTO sys_role_permission (role_id, permission_id, created_by)
 VALUES 
 ('ROLE_SYS_ADMIN', 'PERM_001', 'SYSTEM'),
@@ -427,7 +427,7 @@ VALUES
 ('ROLE_SYS_ADMIN', 'PERM_009', 'SYSTEM'),
 ('ROLE_SYS_ADMIN', 'PERM_010', 'SYSTEM');
 
--- 为租户管理员分配租户级权限
+-- 为租户管理员分配租户级权�?
 INSERT INTO sys_role_permission (role_id, permission_id, created_by)
 VALUES 
 ('ROLE_TENANT_ADMIN', 'PERM_009', 'SYSTEM'),  -- 租户管理权限
@@ -438,8 +438,9 @@ INSERT INTO sys_role_permission (role_id, permission_id, created_by)
 VALUES 
 ('ROLE_DEPT_MANAGER', 'PERM_001', 'SYSTEM');  -- 用户查看权限
 
--- 设置部门负责人
+-- 设置部门负责�?
 UPDATE sys_dept SET manager_id = 'USER_001' WHERE dept_id = 'DEPT_001';
 
 -- 更新角色层级
 CALL UpdateRoleLevels();
+
