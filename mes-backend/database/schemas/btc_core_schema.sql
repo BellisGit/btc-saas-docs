@@ -172,34 +172,180 @@ CREATE TABLE sys_permission (
 CREATE TABLE sys_menu (
     menu_id VARCHAR(32) PRIMARY KEY COMMENT '菜单ID',
     tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    parent_id VARCHAR(32) COMMENT '父菜单ID',
+    
+    -- 基础属性
     menu_code VARCHAR(64) NOT NULL COMMENT '菜单代码',
     menu_name VARCHAR(128) NOT NULL COMMENT '菜单名称',
-    menu_type ENUM('DIRECTORY', 'MENU', 'BUTTON') DEFAULT 'MENU' COMMENT '菜单类型',
-    parent_id VARCHAR(32) COMMENT '父菜单ID',
-    path VARCHAR(255) COMMENT '路由路径',
-    component VARCHAR(255) COMMENT '组件路径',
-    icon VARCHAR(64) COMMENT '图标',
-    sort_order INT DEFAULT 0 COMMENT '排序',
+    menu_type ENUM('DIRECTORY', 'MENU', 'BUTTON', 'PLUGIN') DEFAULT 'MENU' COMMENT '菜单类型',
+    icon VARCHAR(64) COMMENT '菜单图标',
+    sort_order INT DEFAULT 0 COMMENT '排序号',
+    
+    -- 模块化属性
+    module_code VARCHAR(32) NOT NULL COMMENT '模块代码',
+    plugin_code VARCHAR(32) COMMENT '插件代码',
+    deploy_url VARCHAR(255) COMMENT '部署地址',
+    route_path VARCHAR(255) COMMENT '路由路径',
+    component_path VARCHAR(255) COMMENT '组件路径',
+    
+    -- 权限属性
+    permission_code VARCHAR(64) COMMENT '权限标识',
+    access_level ENUM('PUBLIC', 'AUTHENTICATED', 'AUTHORIZED') DEFAULT 'AUTHORIZED' COMMENT '访问级别',
+    data_scope ENUM('ALL', 'TENANT', 'DEPT', 'SELF') DEFAULT 'TENANT' COMMENT '数据权限',
+    operation_type ENUM('READ', 'WRITE', 'ADMIN') DEFAULT 'READ' COMMENT '操作权限',
+    
+    -- 租户属性
+    tenant_visible BOOLEAN DEFAULT TRUE COMMENT '租户可见性',
+    tenant_config JSON COMMENT '租户配置',
+    
+    -- 状态属性
     visible BOOLEAN DEFAULT TRUE COMMENT '是否可见',
     keep_alive BOOLEAN DEFAULT FALSE COMMENT '是否缓存',
     external_link BOOLEAN DEFAULT FALSE COMMENT '是否外链',
     external_url VARCHAR(500) COMMENT '外链地址',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE' COMMENT '状态',
+    is_deleted BOOLEAN DEFAULT FALSE COMMENT '是否删除',
+    
+    -- 审计字段
+    created_by VARCHAR(64) NOT NULL COMMENT '创建人',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_by VARCHAR(64) COMMENT '更新人',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
     INDEX idx_tenant (tenant_id),
+    INDEX idx_parent (parent_id),
+    INDEX idx_module (module_code),
+    INDEX idx_plugin (plugin_code),
     INDEX idx_menu_code (menu_code),
-    INDEX idx_parent_id (parent_id),
     INDEX idx_visible (visible),
     INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (parent_id) REFERENCES sys_menu(menu_id)
-) COMMENT '系统菜单表';
+    FOREIGN KEY (tenant_id) REFERENCES sys_tenant(tenant_id),
+    FOREIGN KEY (parent_id) REFERENCES sys_menu(menu_id),
+    UNIQUE KEY uk_menu_code (menu_code, tenant_id)
+) COMMENT '系统菜单表(基于cool-admin多模块架构)';
 
 -- ==============================================
--- 7. 菜单权限关联表（关联菜单和权限）
+-- 7. 模块表 (支持多模块架构)
+-- ==============================================
+
+CREATE TABLE sys_module (
+    module_id VARCHAR(32) PRIMARY KEY COMMENT '模块ID',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    
+    -- 基础属性
+    module_code VARCHAR(32) NOT NULL UNIQUE COMMENT '模块代码',
+    module_name VARCHAR(64) NOT NULL COMMENT '模块名称',
+    module_type ENUM('SYSTEM', 'BUSINESS', 'PLUGIN') NOT NULL COMMENT '模块类型',
+    description TEXT COMMENT '模块描述',
+    
+    -- 部署属性
+    deploy_url VARCHAR(255) COMMENT '部署地址',
+    api_base_url VARCHAR(255) COMMENT 'API基础地址',
+    version VARCHAR(16) COMMENT '版本号',
+    build_version VARCHAR(32) COMMENT '构建版本',
+    
+    -- 配置属性
+    config JSON COMMENT '模块配置',
+    dependencies JSON COMMENT '依赖关系',
+    plugins JSON COMMENT '插件列表',
+    
+    -- 状态属性
+    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'DEPRECATED') DEFAULT 'ACTIVE' COMMENT '状态',
+    is_deleted BOOLEAN DEFAULT FALSE COMMENT '是否删除',
+    
+    -- 审计字段
+    created_by VARCHAR(64) NOT NULL COMMENT '创建人',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_by VARCHAR(64) COMMENT '更新人',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_module_code (module_code),
+    INDEX idx_module_type (module_type),
+    INDEX idx_status (status),
+    FOREIGN KEY (tenant_id) REFERENCES sys_tenant(tenant_id)
+) COMMENT '模块表';
+
+-- ==============================================
+-- 8. 插件表 (支持插件化扩展)
+-- ==============================================
+
+CREATE TABLE sys_plugin (
+    plugin_id VARCHAR(32) PRIMARY KEY COMMENT '插件ID',
+    module_id VARCHAR(32) NOT NULL COMMENT '所属模块ID',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    
+    -- 基础属性
+    plugin_code VARCHAR(32) NOT NULL COMMENT '插件代码',
+    plugin_name VARCHAR(64) NOT NULL COMMENT '插件名称',
+    plugin_type ENUM('FUNCTION', 'WIDGET', 'INTEGRATION') NOT NULL COMMENT '插件类型',
+    description TEXT COMMENT '插件描述',
+    
+    -- 部署属性
+    plugin_url VARCHAR(255) COMMENT '插件地址',
+    api_endpoint VARCHAR(255) COMMENT 'API端点',
+    version VARCHAR(16) COMMENT '版本号',
+    
+    -- 配置属性
+    config JSON COMMENT '插件配置',
+    permissions JSON COMMENT '权限配置',
+    menu_config JSON COMMENT '菜单配置',
+    
+    -- 状态属性
+    status ENUM('ACTIVE', 'INACTIVE', 'LOADING', 'ERROR') DEFAULT 'INACTIVE' COMMENT '状态',
+    is_deleted BOOLEAN DEFAULT FALSE COMMENT '是否删除',
+    
+    -- 审计字段
+    created_by VARCHAR(64) NOT NULL COMMENT '创建人',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_by VARCHAR(64) COMMENT '更新人',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    INDEX idx_module (module_id),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_plugin_code (plugin_code),
+    INDEX idx_plugin_type (plugin_type),
+    INDEX idx_status (status),
+    FOREIGN KEY (module_id) REFERENCES sys_module(module_id),
+    FOREIGN KEY (tenant_id) REFERENCES sys_tenant(tenant_id)
+) COMMENT '插件表';
+
+-- ==============================================
+-- 9. 用户模块关联表 (支持模块跳转)
+-- ==============================================
+
+CREATE TABLE sys_user_module (
+    user_module_id VARCHAR(32) PRIMARY KEY COMMENT '用户模块关联ID',
+    user_id VARCHAR(32) NOT NULL COMMENT '用户ID',
+    module_id VARCHAR(32) NOT NULL COMMENT '模块ID',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    
+    -- 权限属性
+    access_level ENUM('READ', 'WRITE', 'ADMIN') DEFAULT 'READ' COMMENT '访问级别',
+    is_default BOOLEAN DEFAULT FALSE COMMENT '是否默认模块',
+    auto_redirect BOOLEAN DEFAULT TRUE COMMENT '是否自动跳转',
+    
+    -- 状态属性
+    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
+    
+    -- 审计字段
+    created_by VARCHAR(64) NOT NULL COMMENT '创建人',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_by VARCHAR(64) COMMENT '更新人',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    UNIQUE KEY uk_user_module (user_id, module_id),
+    INDEX idx_user (user_id),
+    INDEX idx_module (module_id),
+    INDEX idx_tenant (tenant_id),
+    INDEX idx_status (status),
+    FOREIGN KEY (user_id) REFERENCES sys_user(user_id),
+    FOREIGN KEY (module_id) REFERENCES sys_module(module_id),
+    FOREIGN KEY (tenant_id) REFERENCES sys_tenant(tenant_id)
+) COMMENT '用户模块关联表';
+
+-- ==============================================
+-- 10. 菜单权限关联表（关联菜单和权限）
 -- ==============================================
 
 CREATE TABLE sys_menu_permission (
@@ -844,89 +990,156 @@ INSERT INTO sys_permission (permission_id, tenant_id, permission_code, permissio
 ('PERM_SUPPLIER_RAW_MANAGE', 'TENANT_SUPPLIER', 'supplier:raw:manage', '原材料管理', 'MENU_ACCESS', 'MENU', 'RAW_MATERIAL_MANAGE', 'WRITE', 'SYSTEM'),
 ('PERM_SUPPLIER_RAW_IQC', 'TENANT_SUPPLIER', 'supplier:raw:iqc', '原材料IQC协同', 'MENU_ACCESS', 'MENU', 'RAW_IQC_COORDINATE', 'WRITE', 'SYSTEM');
 
--- 插入基于流程树的菜单数据
-INSERT INTO sys_menu (menu_id, tenant_id, menu_code, menu_name, menu_type, path, component, icon, sort_order, created_by) VALUES
--- ===== 英国总公司菜单 =====
-('MENU_UK_DASHBOARD', 'TENANT_UK_HEAD', 'uk:dashboard', '数据看板', 'MENU', '/uk/dashboard', 'uk/dashboard/index', 'dashboard', 1, 'SYSTEM'),
-('MENU_UK_REPORTS', 'TENANT_UK_HEAD', 'uk:reports', '报表中心', 'MENU', '/uk/reports', 'uk/reports/index', 'chart', 2, 'SYSTEM'),
-('MENU_UK_BI_ANALYSIS', 'TENANT_UK_HEAD', 'uk:bi:analysis', 'BI分析', 'MENU', '/uk/bi-analysis', 'uk/bi-analysis/index', 'analysis', 3, 'SYSTEM'),
-('MENU_UK_SYSTEM_MANAGE', 'TENANT_UK_HEAD', 'uk:system:manage', '系统管理', 'MENU', '/uk/system-manage', 'uk/system-manage/index', 'system', 4, 'SYSTEM'),
+-- 插入模块数据
+INSERT INTO sys_module (module_id, tenant_id, module_code, module_name, module_type, description, deploy_url, api_base_url, version, status, created_by) VALUES
+-- 系统管理模块
+('MODULE_SYSTEM', 'TENANT_UK_HEAD', 'SYSTEM', '系统管理', 'SYSTEM', '系统级管理模块，包含租户管理、模块管理、插件管理等', 'https://system.btc-saas.com', 'https://api.btc-saas.com/system', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('MODULE_SYSTEM', 'TENANT_INERT', 'SYSTEM', '系统管理', 'SYSTEM', '系统级管理模块，包含租户管理、模块管理、插件管理等', 'https://system.btc-saas.com', 'https://api.btc-saas.com/system', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('MODULE_SYSTEM', 'TENANT_SUPPLIER', 'SYSTEM', '系统管理', 'SYSTEM', '系统级管理模块，包含租户管理、模块管理、插件管理等', 'https://system.btc-saas.com', 'https://api.btc-saas.com/system', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- 采购域模块
+('MODULE_PROCUREMENT', 'TENANT_INERT', 'PROCUREMENT', '采购域', 'BUSINESS', '采购业务模块，包含供应商管理、采购计划、采购执行等', 'https://procurement.btc-saas.com', 'https://api.btc-saas.com/procurement', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('MODULE_PROCUREMENT', 'TENANT_SUPPLIER', 'PROCUREMENT', '采购域', 'BUSINESS', '采购业务模块，包含供应商管理、采购计划、采购执行等', 'https://procurement.btc-saas.com', 'https://api.btc-saas.com/procurement', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- 生产域模块
+('MODULE_PRODUCTION', 'TENANT_INERT', 'PRODUCTION', '生产域', 'BUSINESS', '生产业务模块，包含生产计划、工单管理、生产执行等', 'https://production.btc-saas.com', 'https://api.btc-saas.com/production', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- 物流域模块
+('MODULE_LOGISTICS', 'TENANT_INERT', 'LOGISTICS', '物流域', 'BUSINESS', '物流业务模块，包含仓库管理、库存管理、配送管理等', 'https://logistics.btc-saas.com', 'https://api.btc-saas.com/logistics', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- 质量域模块
+('MODULE_QUALITY', 'TENANT_INERT', 'QUALITY', '质量域', 'BUSINESS', '质量业务模块，包含IQC检验、IPQC巡检、OQC出货等', 'https://quality.btc-saas.com', 'https://api.btc-saas.com/quality', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- 维护域模块
+('MODULE_MAINTENANCE', 'TENANT_INERT', 'MAINTENANCE', '维护域', 'BUSINESS', '维护业务模块，包含设备管理、维护计划、故障处理等', 'https://maintenance.btc-saas.com', 'https://api.btc-saas.com/maintenance', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- BI分析模块
+('MODULE_BI', 'TENANT_UK_HEAD', 'BI', 'BI分析', 'BUSINESS', 'BI分析模块，包含数据看板、报表分析、实时监控等', 'https://bi.btc-saas.com', 'https://api.btc-saas.com/bi', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('MODULE_BI', 'TENANT_INERT', 'BI', 'BI分析', 'BUSINESS', 'BI分析模块，包含数据看板、报表分析、实时监控等', 'https://bi.btc-saas.com', 'https://api.btc-saas.com/bi', '1.0.0', 'ACTIVE', 'SYSTEM');
+
+-- 插入插件数据
+INSERT INTO sys_plugin (plugin_id, module_id, tenant_id, plugin_code, plugin_name, plugin_type, description, version, status, created_by) VALUES
+-- 采购域插件
+('PLUGIN_SUPPLIER', 'MODULE_PROCUREMENT', 'TENANT_INERT', 'SUPPLIER', '供应商管理插件', 'FUNCTION', '供应商信息管理、评价、协同等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_PURCHASE', 'MODULE_PROCUREMENT', 'TENANT_INERT', 'PURCHASE', '采购管理插件', 'FUNCTION', '采购计划、采购执行、合同管理等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_CONTRACT', 'MODULE_PROCUREMENT', 'TENANT_INERT', 'CONTRACT', '合同管理插件', 'FUNCTION', '采购合同管理、审批、执行等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- 生产域插件
+('PLUGIN_WORKORDER', 'MODULE_PRODUCTION', 'TENANT_INERT', 'WORKORDER', '工单管理插件', 'FUNCTION', '工单创建、下发、执行、跟踪等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_SCHEDULING', 'MODULE_PRODUCTION', 'TENANT_INERT', 'SCHEDULING', '生产调度插件', 'FUNCTION', '生产计划、资源调度、进度控制等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_MONITORING', 'MODULE_PRODUCTION', 'TENANT_INERT', 'MONITORING', '生产监控插件', 'FUNCTION', '生产状态监控、异常告警、性能分析等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- 质量域插件
+('PLUGIN_IQC', 'MODULE_QUALITY', 'TENANT_INERT', 'IQC', 'IQC检验插件', 'FUNCTION', '进料检验、AQL抽样、不合格处理等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_IPQC', 'MODULE_QUALITY', 'TENANT_INERT', 'IPQC', 'IPQC巡检插件', 'FUNCTION', '过程检验、抽检记录、质量问题发现等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_OQC', 'MODULE_QUALITY', 'TENANT_INERT', 'OQC', 'OQC出货插件', 'FUNCTION', '出货检验、AQL抽检、出货放行等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+
+-- BI分析插件
+('PLUGIN_DASHBOARD', 'MODULE_BI', 'TENANT_UK_HEAD', 'DASHBOARD', '数据看板插件', 'WIDGET', '实时数据看板、关键指标展示、趋势分析等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_REPORT', 'MODULE_BI', 'TENANT_UK_HEAD', 'REPORT', '报表分析插件', 'FUNCTION', '报表生成、数据分析、导出等功能', '1.0.0', 'ACTIVE', 'SYSTEM'),
+('PLUGIN_ALERT', 'MODULE_BI', 'TENANT_UK_HEAD', 'ALERT', '告警监控插件', 'FUNCTION', '异常告警、监控配置、通知推送等功能', '1.0.0', 'ACTIVE', 'SYSTEM');
+
+-- 插入基于cool-admin多模块架构的菜单数据
+INSERT INTO sys_menu (menu_id, tenant_id, menu_code, menu_name, menu_type, module_code, route_path, component_path, icon, sort_order, access_level, data_scope, operation_type, created_by) VALUES
+-- ===== 英国总公司菜单 (BI模块) =====
+('MENU_UK_DASHBOARD', 'TENANT_UK_HEAD', 'uk:dashboard', '数据看板', 'MENU', 'BI', '/bi/dashboard', 'bi/dashboard/index', 'dashboard', 1, 'AUTHORIZED', 'ALL', 'READ', 'SYSTEM'),
+('MENU_UK_REPORTS', 'TENANT_UK_HEAD', 'uk:reports', '报表中心', 'MENU', 'BI', '/bi/reports', 'bi/reports/index', 'chart', 2, 'AUTHORIZED', 'ALL', 'READ', 'SYSTEM'),
+('MENU_UK_BI_ANALYSIS', 'TENANT_UK_HEAD', 'uk:bi:analysis', 'BI分析', 'MENU', 'BI', '/bi/analysis', 'bi/analysis/index', 'analysis', 3, 'AUTHORIZED', 'ALL', 'READ', 'SYSTEM'),
+('MENU_UK_SYSTEM_MANAGE', 'TENANT_UK_HEAD', 'uk:system:manage', '系统管理', 'MENU', 'SYSTEM', '/system/manage', 'system/manage/index', 'system', 4, 'AUTHORIZED', 'ALL', 'ADMIN', 'SYSTEM'),
 
 -- ===== 内网用户菜单 =====
--- 生产管理菜单
-('MENU_INERT_PRODUCTION', 'TENANT_INERT', 'inert:production', '生产管理', 'DIRECTORY', '/production', 'Layout', 'production', 1, 'SYSTEM'),
-('MENU_INERT_PRODUCTION_PLAN', 'TENANT_INERT', 'inert:production:plan', '生产计划', 'MENU', '/production/plan', 'production/plan/index', 'calendar', 1, 'SYSTEM'),
-('MENU_INERT_WORK_ORDER', 'TENANT_INERT', 'inert:workorder:manage', '工单管理', 'MENU', '/production/work-order', 'production/work-order/index', 'document', 2, 'SYSTEM'),
-('MENU_INERT_PRODUCTION_EXECUTE', 'TENANT_INERT', 'inert:production:execute', '生产执行', 'MENU', '/production/execute', 'production/execute/index', 'play', 3, 'SYSTEM'),
-('MENU_INERT_FAI_MANAGE', 'TENANT_INERT', 'inert:fai:manage', '首件验证', 'MENU', '/production/fai', 'production/fai/index', 'check-circle', 4, 'SYSTEM'),
-('MENU_INERT_TEST_MANAGE', 'TENANT_INERT', 'inert:test:manage', '测试管理', 'MENU', '/production/test', 'production/test/index', 'experiment', 5, 'SYSTEM'),
+-- 系统管理模块菜单
+('MENU_INERT_SYSTEM', 'TENANT_INERT', 'inert:system', '系统管理', 'DIRECTORY', 'SYSTEM', '/system', 'Layout', 'system', 1, 'AUTHORIZED', 'TENANT', 'ADMIN', 'SYSTEM'),
+('MENU_INERT_SYSTEM_MANAGE', 'TENANT_INERT', 'inert:system:manage', '系统配置', 'MENU', 'SYSTEM', '/system/config', 'system/config/index', 'setting', 1, 'AUTHORIZED', 'TENANT', 'ADMIN', 'SYSTEM'),
 
--- 质量管理菜单
-('MENU_INERT_QUALITY', 'TENANT_INERT', 'inert:quality', '质量管理', 'DIRECTORY', '/quality', 'Layout', 'quality', 2, 'SYSTEM'),
-('MENU_INERT_IQC_MANAGE', 'TENANT_INERT', 'inert:iqc:manage', 'IQC检验', 'MENU', '/quality/iqc', 'quality/iqc/index', 'inbox', 1, 'SYSTEM'),
-('MENU_INERT_IPQC_MANAGE', 'TENANT_INERT', 'inert:ipqc:manage', 'IPQC巡检', 'MENU', '/quality/ipqc', 'quality/ipqc/index', 'eye', 2, 'SYSTEM'),
-('MENU_INERT_OQC_MANAGE', 'TENANT_INERT', 'inert:oqc:manage', 'OQC出货', 'MENU', '/quality/oqc', 'quality/oqc/index', 'export', 3, 'SYSTEM'),
-('MENU_INERT_QUALITY_MANAGE', 'TENANT_INERT', 'inert:quality:manage', '质量管控', 'MENU', '/quality/manage', 'quality/manage/index', 'setting', 4, 'SYSTEM'),
+-- 采购域模块菜单
+('MENU_INERT_PROCUREMENT', 'TENANT_INERT', 'inert:procurement', '采购域', 'DIRECTORY', 'PROCUREMENT', '/procurement', 'Layout', 'shopping', 2, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_SUPPLIER_MANAGE', 'TENANT_INERT', 'inert:procurement:supplier', '供应商管理', 'MENU', 'PROCUREMENT', '/procurement/supplier', 'procurement/supplier/index', 'team', 1, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_PURCHASE_PLAN', 'TENANT_INERT', 'inert:procurement:purchase', '采购计划', 'MENU', 'PROCUREMENT', '/procurement/purchase', 'procurement/purchase/index', 'calendar', 2, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_CONTRACT_MANAGE', 'TENANT_INERT', 'inert:procurement:contract', '合同管理', 'MENU', 'PROCUREMENT', '/procurement/contract', 'procurement/contract/index', 'file-text', 3, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
 
--- 仓储物流菜单
-('MENU_INERT_WAREHOUSE', 'TENANT_INERT', 'inert:warehouse', '仓库管理', 'DIRECTORY', '/warehouse', 'Layout', 'warehouse', 3, 'SYSTEM'),
-('MENU_INERT_MATERIAL_MANAGE', 'TENANT_INERT', 'inert:material:manage', '物料管理', 'MENU', '/warehouse/material', 'warehouse/material/index', 'box', 1, 'SYSTEM'),
-('MENU_INERT_INVENTORY_MANAGE', 'TENANT_INERT', 'inert:inventory:manage', '库存管理', 'MENU', '/warehouse/inventory', 'warehouse/inventory/index', 'database', 2, 'SYSTEM'),
-('MENU_INERT_WAREHOUSE_MANAGE', 'TENANT_INERT', 'inert:warehouse:manage', '仓库管控', 'MENU', '/warehouse/manage', 'warehouse/manage/index', 'setting', 3, 'SYSTEM'),
+-- 生产域模块菜单
+('MENU_INERT_PRODUCTION', 'TENANT_INERT', 'inert:production', '生产域', 'DIRECTORY', 'PRODUCTION', '/production', 'Layout', 'production', 3, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_PRODUCTION_PLAN', 'TENANT_INERT', 'inert:production:plan', '生产计划', 'MENU', 'PRODUCTION', '/production/plan', 'production/plan/index', 'calendar', 1, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_WORK_ORDER', 'TENANT_INERT', 'inert:production:workorder', '工单管理', 'MENU', 'PRODUCTION', '/production/workorder', 'production/workorder/index', 'document', 2, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_PRODUCTION_EXECUTE', 'TENANT_INERT', 'inert:production:execute', '生产执行', 'MENU', 'PRODUCTION', '/production/execute', 'production/execute/index', 'play', 3, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_FAI_MANAGE', 'TENANT_INERT', 'inert:production:fai', '首件验证', 'MENU', 'PRODUCTION', '/production/fai', 'production/fai/index', 'check-circle', 4, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_TEST_MANAGE', 'TENANT_INERT', 'inert:production:test', '测试管理', 'MENU', 'PRODUCTION', '/production/test', 'production/test/index', 'experiment', 5, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
 
--- 维护管理菜单
-('MENU_INERT_MAINTENANCE', 'TENANT_INERT', 'inert:maintenance', '维护管理', 'DIRECTORY', '/maintenance', 'Layout', 'tool', 4, 'SYSTEM'),
-('MENU_INERT_MAINTENANCE_MANAGE', 'TENANT_INERT', 'inert:maintenance:manage', '维护管控', 'MENU', '/maintenance/manage', 'maintenance/manage/index', 'setting', 1, 'SYSTEM'),
-('MENU_INERT_MAINTENANCE_EXECUTE', 'TENANT_INERT', 'inert:maintenance:execute', '维护执行', 'MENU', '/maintenance/execute', 'maintenance/execute/index', 'play', 2, 'SYSTEM'),
+-- 物流域模块菜单
+('MENU_INERT_LOGISTICS', 'TENANT_INERT', 'inert:logistics', '物流域', 'DIRECTORY', 'LOGISTICS', '/logistics', 'Layout', 'truck', 4, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_WAREHOUSE_MANAGE', 'TENANT_INERT', 'inert:logistics:warehouse', '仓库管理', 'MENU', 'LOGISTICS', '/logistics/warehouse', 'logistics/warehouse/index', 'warehouse', 1, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_INVENTORY_MANAGE', 'TENANT_INERT', 'inert:logistics:inventory', '库存管理', 'MENU', 'LOGISTICS', '/logistics/inventory', 'logistics/inventory/index', 'database', 2, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_DELIVERY_MANAGE', 'TENANT_INERT', 'inert:logistics:delivery', '配送管理', 'MENU', 'LOGISTICS', '/logistics/delivery', 'logistics/delivery/index', 'truck', 3, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+
+-- 质量域模块菜单
+('MENU_INERT_QUALITY', 'TENANT_INERT', 'inert:quality', '质量域', 'DIRECTORY', 'QUALITY', '/quality', 'Layout', 'quality', 5, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_IQC_MANAGE', 'TENANT_INERT', 'inert:quality:iqc', 'IQC检验', 'MENU', 'QUALITY', '/quality/iqc', 'quality/iqc/index', 'inbox', 1, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_IPQC_MANAGE', 'TENANT_INERT', 'inert:quality:ipqc', 'IPQC巡检', 'MENU', 'QUALITY', '/quality/ipqc', 'quality/ipqc/index', 'eye', 2, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_OQC_MANAGE', 'TENANT_INERT', 'inert:quality:oqc', 'OQC出货', 'MENU', 'QUALITY', '/quality/oqc', 'quality/oqc/index', 'export', 3, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_QUALITY_ANALYSIS', 'TENANT_INERT', 'inert:quality:analysis', '质量分析', 'MENU', 'QUALITY', '/quality/analysis', 'quality/analysis/index', 'chart', 4, 'AUTHORIZED', 'TENANT', 'READ', 'SYSTEM'),
+
+-- 维护域模块菜单
+('MENU_INERT_MAINTENANCE', 'TENANT_INERT', 'inert:maintenance', '维护域', 'DIRECTORY', 'MAINTENANCE', '/maintenance', 'Layout', 'tool', 6, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_EQUIPMENT_MANAGE', 'TENANT_INERT', 'inert:maintenance:equipment', '设备管理', 'MENU', 'MAINTENANCE', '/maintenance/equipment', 'maintenance/equipment/index', 'setting', 1, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_MAINTENANCE_PLAN', 'TENANT_INERT', 'inert:maintenance:plan', '维护计划', 'MENU', 'MAINTENANCE', '/maintenance/plan', 'maintenance/plan/index', 'calendar', 2, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_INERT_FAULT_HANDLE', 'TENANT_INERT', 'inert:maintenance:fault', '故障处理', 'MENU', 'MAINTENANCE', '/maintenance/fault', 'maintenance/fault/index', 'warning', 3, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
 
 -- 追溯分析菜单
-('MENU_INERT_TRACE_ANALYSIS', 'TENANT_INERT', 'inert:trace:analysis', '追溯分析', 'MENU', '/trace/analysis', 'trace/analysis/index', 'search', 5, 'SYSTEM'),
-
--- 系统管理菜单
-('MENU_INERT_SYSTEM_MANAGE', 'TENANT_INERT', 'inert:system:manage', '系统管理', 'MENU', '/system/manage', 'system/manage/index', 'system', 6, 'SYSTEM'),
+('MENU_INERT_TRACE_ANALYSIS', 'TENANT_INERT', 'inert:trace:analysis', '追溯分析', 'MENU', 'BI', '/trace/analysis', 'trace/analysis/index', 'search', 7, 'AUTHORIZED', 'ALL', 'READ', 'SYSTEM'),
 
 -- ===== 供应商群体菜单 =====
--- 模具管理菜单
-('MENU_SUPPLIER_MOLD', 'TENANT_SUPPLIER', 'supplier:mold', '模具管理', 'DIRECTORY', '/supplier/mold', 'Layout', 'mold', 1, 'SYSTEM'),
-('MENU_SUPPLIER_MOLD_MANAGE', 'TENANT_SUPPLIER', 'supplier:mold:manage', '模具管控', 'MENU', '/supplier/mold/manage', 'supplier/mold/manage/index', 'setting', 1, 'SYSTEM'),
-('MENU_SUPPLIER_MOLD_UPDATE', 'TENANT_SUPPLIER', 'supplier:mold:update', '状态更新', 'MENU', '/supplier/mold/update', 'supplier/mold/update/index', 'edit', 2, 'SYSTEM'),
+-- 采购域模块菜单 (供应商视角)
+('MENU_SUPPLIER_PROCUREMENT', 'TENANT_SUPPLIER', 'supplier:procurement', '采购域', 'DIRECTORY', 'PROCUREMENT', '/procurement', 'Layout', 'shopping', 1, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_SUPPLIER_INFO_MANAGE', 'TENANT_SUPPLIER', 'supplier:procurement:info', '信息管理', 'MENU', 'PROCUREMENT', '/procurement/info', 'procurement/info/index', 'user', 1, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_SUPPLIER_ORDER_MANAGE', 'TENANT_SUPPLIER', 'supplier:procurement:order', '订单管理', 'MENU', 'PROCUREMENT', '/procurement/order', 'procurement/order/index', 'file', 2, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
+('MENU_SUPPLIER_DELIVERY_MANAGE', 'TENANT_SUPPLIER', 'supplier:procurement:delivery', '交付管理', 'MENU', 'PROCUREMENT', '/procurement/delivery', 'procurement/delivery/index', 'truck', 3, 'AUTHORIZED', 'TENANT', 'WRITE', 'SYSTEM'),
 
--- 原材料管理菜单
-('MENU_SUPPLIER_RAW', 'TENANT_SUPPLIER', 'supplier:raw', '原材料管理', 'DIRECTORY', '/supplier/raw', 'Layout', 'material', 2, 'SYSTEM'),
-('MENU_SUPPLIER_RAW_MANAGE', 'TENANT_SUPPLIER', 'supplier:raw:manage', '供应管理', 'MENU', '/supplier/raw/manage', 'supplier/raw/manage/index', 'setting', 1, 'SYSTEM'),
-('MENU_SUPPLIER_RAW_IQC', 'TENANT_SUPPLIER', 'supplier:raw:iqc', 'IQC协同', 'MENU', '/supplier/raw/iqc', 'supplier/raw/iqc/index', 'coordinate', 2, 'SYSTEM');
+-- 系统管理菜单
+('MENU_SUPPLIER_SYSTEM', 'TENANT_SUPPLIER', 'supplier:system', '系统管理', 'MENU', 'SYSTEM', '/system', 'system/index', 'system', 2, 'AUTHORIZED', 'TENANT', 'READ', 'SYSTEM');
 
--- 设置基于流程树的菜单层级关系
--- 内网用户生产管理菜单层级
+-- 插入用户模块关联数据
+INSERT INTO sys_user_module (user_module_id, user_id, module_id, tenant_id, access_level, is_default, auto_redirect, status, created_by) VALUES
+-- 英国总公司用户模块关联
+('USER_MODULE_UK_001', 'USER_UK_ADMIN', 'MODULE_SYSTEM', 'TENANT_UK_HEAD', 'ADMIN', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_UK_002', 'USER_UK_ADMIN', 'MODULE_BI', 'TENANT_UK_HEAD', 'ADMIN', TRUE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_UK_003', 'USER_UK_LEADER', 'MODULE_BI', 'TENANT_UK_HEAD', 'READ', TRUE, TRUE, 'ACTIVE', 'SYSTEM'),
+
+-- 内网用户模块关联
+('USER_MODULE_INERT_001', 'USER_INERT_ADMIN', 'MODULE_SYSTEM', 'TENANT_INERT', 'ADMIN', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_INERT_002', 'USER_INERT_ADMIN', 'MODULE_PROCUREMENT', 'TENANT_INERT', 'ADMIN', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_INERT_003', 'USER_INERT_ADMIN', 'MODULE_PRODUCTION', 'TENANT_INERT', 'ADMIN', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_INERT_004', 'USER_INERT_ADMIN', 'MODULE_LOGISTICS', 'TENANT_INERT', 'ADMIN', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_INERT_005', 'USER_INERT_ADMIN', 'MODULE_QUALITY', 'TENANT_INERT', 'ADMIN', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_INERT_006', 'USER_INERT_ADMIN', 'MODULE_MAINTENANCE', 'TENANT_INERT', 'ADMIN', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_INERT_007', 'USER_INERT_ADMIN', 'MODULE_BI', 'TENANT_INERT', 'ADMIN', TRUE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_INERT_008', 'USER_INERT_OPERATOR', 'MODULE_PRODUCTION', 'TENANT_INERT', 'WRITE', TRUE, TRUE, 'ACTIVE', 'SYSTEM'),
+
+-- 供应商用户模块关联
+('USER_MODULE_SUPPLIER_001', 'USER_SUPPLIER_ADMIN', 'MODULE_SYSTEM', 'TENANT_SUPPLIER', 'READ', FALSE, TRUE, 'ACTIVE', 'SYSTEM'),
+('USER_MODULE_SUPPLIER_002', 'USER_SUPPLIER_ADMIN', 'MODULE_PROCUREMENT', 'TENANT_SUPPLIER', 'WRITE', TRUE, TRUE, 'ACTIVE', 'SYSTEM');
+
+-- 设置基于cool-admin多模块架构的菜单层级关系
+-- 内网用户系统管理菜单层级
+UPDATE sys_menu SET parent_id = 'MENU_INERT_SYSTEM' WHERE menu_id = 'MENU_INERT_SYSTEM_MANAGE';
+
+-- 内网用户采购域菜单层级
+UPDATE sys_menu SET parent_id = 'MENU_INERT_PROCUREMENT' WHERE menu_id IN ('MENU_INERT_SUPPLIER_MANAGE', 'MENU_INERT_PURCHASE_PLAN', 'MENU_INERT_CONTRACT_MANAGE');
+
+-- 内网用户生产域菜单层级
 UPDATE sys_menu SET parent_id = 'MENU_INERT_PRODUCTION' WHERE menu_id IN ('MENU_INERT_PRODUCTION_PLAN', 'MENU_INERT_WORK_ORDER', 'MENU_INERT_PRODUCTION_EXECUTE', 'MENU_INERT_FAI_MANAGE', 'MENU_INERT_TEST_MANAGE');
 
--- 内网用户质量管理菜单层级
-UPDATE sys_menu SET parent_id = 'MENU_INERT_QUALITY' WHERE menu_id IN ('MENU_INERT_IQC_MANAGE', 'MENU_INERT_IPQC_MANAGE', 'MENU_INERT_OQC_MANAGE', 'MENU_INERT_QUALITY_MANAGE');
+-- 内网用户物流域菜单层级
+UPDATE sys_menu SET parent_id = 'MENU_INERT_LOGISTICS' WHERE menu_id IN ('MENU_INERT_WAREHOUSE_MANAGE', 'MENU_INERT_INVENTORY_MANAGE', 'MENU_INERT_DELIVERY_MANAGE');
 
--- 内网用户仓储物流菜单层级
-UPDATE sys_menu SET parent_id = 'MENU_INERT_WAREHOUSE' WHERE menu_id IN ('MENU_INERT_MATERIAL_MANAGE', 'MENU_INERT_INVENTORY_MANAGE', 'MENU_INERT_WAREHOUSE_MANAGE');
+-- 内网用户质量域菜单层级
+UPDATE sys_menu SET parent_id = 'MENU_INERT_QUALITY' WHERE menu_id IN ('MENU_INERT_IQC_MANAGE', 'MENU_INERT_IPQC_MANAGE', 'MENU_INERT_OQC_MANAGE', 'MENU_INERT_QUALITY_ANALYSIS');
 
--- 内网用户维护管理菜单层级
-UPDATE sys_menu SET parent_id = 'MENU_INERT_MAINTENANCE' WHERE menu_id IN ('MENU_INERT_MAINTENANCE_MANAGE', 'MENU_INERT_MAINTENANCE_EXECUTE');
+-- 内网用户维护域菜单层级
+UPDATE sys_menu SET parent_id = 'MENU_INERT_MAINTENANCE' WHERE menu_id IN ('MENU_INERT_EQUIPMENT_MANAGE', 'MENU_INERT_MAINTENANCE_PLAN', 'MENU_INERT_FAULT_HANDLE');
 
--- 供应商模具管理菜单层级
-UPDATE sys_menu SET parent_id = 'MENU_SUPPLIER_MOLD' WHERE menu_id IN ('MENU_SUPPLIER_MOLD_MANAGE', 'MENU_SUPPLIER_MOLD_UPDATE');
-
--- 供应商原材料管理菜单层级
-UPDATE sys_menu SET parent_id = 'MENU_SUPPLIER_RAW' WHERE menu_id IN ('MENU_SUPPLIER_RAW_MANAGE', 'MENU_SUPPLIER_RAW_IQC');
-
--- 插入基于流程树的菜单权限关联
-INSERT INTO sys_menu_permission (menu_id, permission_id, relation_type, created_by) VALUES
--- ===== 英国总公司菜单权限 =====
-('MENU_UK_DASHBOARD', 'PERM_UK_DATA_VIEW', 'REQUIRED', 'SYSTEM'),
-('MENU_UK_REPORTS', 'PERM_UK_REPORT_VIEW', 'REQUIRED', 'SYSTEM'),
-('MENU_UK_BI_ANALYSIS', 'PERM_UK_BI_ANALYSIS', 'REQUIRED', 'SYSTEM'),
-('MENU_UK_SYSTEM_MANAGE', 'PERM_UK_SYSTEM_MANAGE', 'REQUIRED', 'SYSTEM'),
-
--- ===== 内网用户菜单权限 =====
--- 生产管理菜单权限
-('MENU_INERT_PRODUCTION', 'PERM_INERT_PRODUCTION_PLAN', 'REQUIRED', 'SYSTEM'),
-('MENU_INERT_PRODUCTION_PLAN', 'PERM_INERT_PRODUCTION_PLAN', 'REQUIRED', 'SYSTEM'),
+-- 供应商采购域菜单层级
+UPDATE sys_menu SET parent_id = 'MENU_SUPPLIER_PROCUREMENT' WHERE menu_id IN ('MENU_SUPPLIER_INFO_MANAGE', 'MENU_SUPPLIER_ORDER_MANAGE', 'MENU_SUPPLIER_DELIVERY_MANAGE');
 ('MENU_INERT_WORK_ORDER', 'PERM_INERT_WORK_ORDER', 'REQUIRED', 'SYSTEM'),
 ('MENU_INERT_PRODUCTION_EXECUTE', 'PERM_INERT_PRODUCTION_EXECUTE', 'REQUIRED', 'SYSTEM'),
 ('MENU_INERT_FAI_MANAGE', 'PERM_INERT_FAI_MANAGE', 'REQUIRED', 'SYSTEM'),
