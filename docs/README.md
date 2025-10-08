@@ -32,6 +32,7 @@
 - **17-auto-crud-framework.md** - 自动化CRUD框架
 - **18-mysql-dynamic-extension-solution.md** - MySQL动态字段扩展解决方案
 - **20-workflow-extension-solution.md** - 动态流程扩展解决方案
+- **数据库表结构清单.md** - 数据库表结构清单
 
 ## 快速导航
 
