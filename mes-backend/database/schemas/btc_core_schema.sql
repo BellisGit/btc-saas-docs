@@ -1,18 +1,16 @@
 -- ==============================================
--- BTC核心数据库架构 - 混合架构方案
--- 包含所有基础表和核心业务表，支持复杂事务
+-- BTC核心数据库 - 系统基础表（支持角色继承）
+-- 权限和菜单分离，角色支持继承
+-- 作者: MES开发团队
+-- 日期: 2025-01-07
 -- ==============================================
-
--- 创建BTC核心数据库
-CREATE DATABASE IF NOT EXISTS btc_core CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE btc_core;
 
 -- ==============================================
--- 1. 系统基础表（所有扩展数据库的基础）
+-- 1. 租户管理表
 -- ==============================================
 
--- 租户管理表
 CREATE TABLE tenant (
     tenant_id VARCHAR(32) PRIMARY KEY COMMENT '租户ID',
     tenant_code VARCHAR(64) NOT NULL UNIQUE COMMENT '租户代码',
@@ -39,40 +37,41 @@ CREATE TABLE tenant (
     INDEX idx_subscription_expire (subscription_expire)
 ) COMMENT '租户管理表';
 
--- 站点管理表
-CREATE TABLE site (
-    site_id VARCHAR(32) PRIMARY KEY COMMENT '站点ID',
+-- ==============================================
+-- 2. 部门表
+-- ==============================================
+
+CREATE TABLE sys_dept (
+    dept_id VARCHAR(32) PRIMARY KEY COMMENT '部门ID',
     tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_code VARCHAR(64) NOT NULL COMMENT '站点代码',
-    site_name VARCHAR(128) NOT NULL COMMENT '站点名称',
-    site_type ENUM('HEADQUARTERS', 'BRANCH', 'FACTORY', 'WAREHOUSE', 'RETAIL') DEFAULT 'FACTORY' COMMENT '站点类型',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE' COMMENT '状态',
-    timezone VARCHAR(32) DEFAULT 'Asia/Shanghai' COMMENT '时区',
-    currency VARCHAR(8) DEFAULT 'CNY' COMMENT '货币',
-    language VARCHAR(8) DEFAULT 'zh-CN' COMMENT '语言',
-    address TEXT COMMENT '地址',
-    contact_person VARCHAR(64) COMMENT '联系人',
-    contact_phone VARCHAR(32) COMMENT '联系电话',
-    contact_email VARCHAR(128) COMMENT '联系邮箱',
-    settings JSON COMMENT '站点配置',
+    dept_code VARCHAR(64) NOT NULL COMMENT '部门代码',
+    dept_name VARCHAR(128) NOT NULL COMMENT '部门名称',
+    parent_id VARCHAR(32) COMMENT '父部门ID',
+    dept_type ENUM('COMPANY', 'DEPARTMENT', 'TEAM', 'GROUP') DEFAULT 'DEPARTMENT' COMMENT '部门类型',
+    manager_id VARCHAR(32) COMMENT '部门负责人ID',
+    sort_order INT DEFAULT 0 COMMENT '排序',
+    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
     created_by VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(64),
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_tenant (tenant_id),
-    INDEX idx_site_code (site_code),
-    INDEX idx_site_name (site_name),
+    INDEX idx_parent_id (parent_id),
     INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
-) COMMENT '站点管理表';
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
+    FOREIGN KEY (parent_id) REFERENCES sys_dept(dept_id)
+) COMMENT '部门表';
 
--- 系统用户表
+-- ==============================================
+-- 3. 系统用户表
+-- ==============================================
+
 CREATE TABLE sys_user (
     user_id VARCHAR(32) PRIMARY KEY COMMENT '用户ID',
     tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
+    dept_id VARCHAR(32) COMMENT '部门ID',
     username VARCHAR(64) NOT NULL UNIQUE COMMENT '用户名',
-    password VARCHAR(255) NOT NULL COMMENT '密码',
+    password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希',
     email VARCHAR(128) COMMENT '邮箱',
     phone VARCHAR(32) COMMENT '手机号',
     real_name VARCHAR(64) COMMENT '真实姓名',
@@ -93,25 +92,32 @@ CREATE TABLE sys_user (
     updated_by VARCHAR(64),
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_tenant (tenant_id),
-    INDEX idx_site (site_id),
+    INDEX idx_dept (dept_id),
     INDEX idx_username (username),
     INDEX idx_email (email),
     INDEX idx_phone (phone),
     INDEX idx_status (status),
     INDEX idx_user_type (user_type),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
+    FOREIGN KEY (dept_id) REFERENCES sys_dept(dept_id)
 ) COMMENT '系统用户表';
 
--- 系统角色表
+-- ==============================================
+-- 4. 系统角色表（支持继承）
+-- ==============================================
+
 CREATE TABLE sys_role (
     role_id VARCHAR(32) PRIMARY KEY COMMENT '角色ID',
     tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    parent_role_id VARCHAR(32) COMMENT '父角色ID',
     role_code VARCHAR(64) NOT NULL COMMENT '角色代码',
     role_name VARCHAR(128) NOT NULL COMMENT '角色名称',
     role_type ENUM('SYSTEM', 'TENANT', 'CUSTOM') DEFAULT 'TENANT' COMMENT '角色类型',
+    role_level INT DEFAULT 0 COMMENT '角色层级',
     description TEXT COMMENT '角色描述',
     data_scope ENUM('ALL', 'CUSTOM', 'DEPT', 'DEPT_AND_CHILD', 'SELF') DEFAULT 'SELF' COMMENT '数据权限范围',
+    inherit_permissions BOOLEAN DEFAULT TRUE COMMENT '是否继承父角色权限',
+    inherit_data_scope BOOLEAN DEFAULT FALSE COMMENT '是否继承父角色数据权限',
     status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
     sort_order INT DEFAULT 0 COMMENT '排序',
     created_by VARCHAR(64) NOT NULL,
@@ -119,24 +125,31 @@ CREATE TABLE sys_role (
     updated_by VARCHAR(64),
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_tenant (tenant_id),
+    INDEX idx_parent_role (parent_role_id),
     INDEX idx_role_code (role_code),
     INDEX idx_role_name (role_name),
+    INDEX idx_role_level (role_level),
     INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
+    FOREIGN KEY (parent_role_id) REFERENCES sys_role(role_id)
 ) COMMENT '系统角色表';
 
--- 系统权限表
+-- ==============================================
+-- 5. 系统权限表（专注权限控制）
+-- ==============================================
+
 CREATE TABLE sys_permission (
     permission_id VARCHAR(32) PRIMARY KEY COMMENT '权限ID',
     tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
     permission_code VARCHAR(128) NOT NULL COMMENT '权限代码',
     permission_name VARCHAR(128) NOT NULL COMMENT '权限名称',
-    permission_type ENUM('MENU', 'BUTTON', 'API', 'DATA') DEFAULT 'MENU' COMMENT '权限类型',
+    permission_type ENUM('MENU_ACCESS', 'BUTTON_ACTION', 'API_CALL', 'DATA_ACCESS') DEFAULT 'MENU_ACCESS' COMMENT '权限类型',
+    resource_type VARCHAR(64) COMMENT '资源类型',
+    resource_id VARCHAR(128) COMMENT '资源标识',
+    action VARCHAR(64) COMMENT '操作类型',
+    scope ENUM('GLOBAL', 'TENANT', 'DEPT', 'SELF') DEFAULT 'TENANT' COMMENT '权限范围',
     parent_id VARCHAR(32) COMMENT '父权限ID',
-    path VARCHAR(255) COMMENT '路径',
-    component VARCHAR(255) COMMENT '组件',
-    icon VARCHAR(64) COMMENT '图标',
-    sort_order INT DEFAULT 0 COMMENT '排序',
+    description TEXT COMMENT '权限描述',
     status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
     created_by VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -144,13 +157,18 @@ CREATE TABLE sys_permission (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_tenant (tenant_id),
     INDEX idx_permission_code (permission_code),
+    INDEX idx_permission_type (permission_type),
+    INDEX idx_resource (resource_type, resource_id),
     INDEX idx_parent_id (parent_id),
     INDEX idx_status (status),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
     FOREIGN KEY (parent_id) REFERENCES sys_permission(permission_id)
 ) COMMENT '系统权限表';
 
--- 系统菜单表
+-- ==============================================
+-- 6. 系统菜单表（专注界面导航）
+-- ==============================================
+
 CREATE TABLE sys_menu (
     menu_id VARCHAR(32) PRIMARY KEY COMMENT '菜单ID',
     tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
@@ -163,6 +181,9 @@ CREATE TABLE sys_menu (
     icon VARCHAR(64) COMMENT '图标',
     sort_order INT DEFAULT 0 COMMENT '排序',
     visible BOOLEAN DEFAULT TRUE COMMENT '是否可见',
+    keep_alive BOOLEAN DEFAULT FALSE COMMENT '是否缓存',
+    external_link BOOLEAN DEFAULT FALSE COMMENT '是否外链',
+    external_url VARCHAR(500) COMMENT '外链地址',
     status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
     created_by VARCHAR(64) NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -171,12 +192,34 @@ CREATE TABLE sys_menu (
     INDEX idx_tenant (tenant_id),
     INDEX idx_menu_code (menu_code),
     INDEX idx_parent_id (parent_id),
+    INDEX idx_visible (visible),
     INDEX idx_status (status),
     FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
     FOREIGN KEY (parent_id) REFERENCES sys_menu(menu_id)
 ) COMMENT '系统菜单表';
 
--- 用户角色关联表
+-- ==============================================
+-- 7. 菜单权限关联表（关联菜单和权限）
+-- ==============================================
+
+CREATE TABLE sys_menu_permission (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    menu_id VARCHAR(32) NOT NULL COMMENT '菜单ID',
+    permission_id VARCHAR(32) NOT NULL COMMENT '权限ID',
+    relation_type ENUM('REQUIRED', 'OPTIONAL') DEFAULT 'REQUIRED' COMMENT '关联类型',
+    created_by VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_menu (menu_id),
+    INDEX idx_permission (permission_id),
+    UNIQUE KEY uk_menu_permission (menu_id, permission_id),
+    FOREIGN KEY (menu_id) REFERENCES sys_menu(menu_id),
+    FOREIGN KEY (permission_id) REFERENCES sys_permission(permission_id)
+) COMMENT '菜单权限关联表';
+
+-- ==============================================
+-- 8. 用户角色关联表
+-- ==============================================
+
 CREATE TABLE sys_user_role (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id VARCHAR(32) NOT NULL COMMENT '用户ID',
@@ -190,7 +233,10 @@ CREATE TABLE sys_user_role (
     FOREIGN KEY (role_id) REFERENCES sys_role(role_id)
 ) COMMENT '用户角色关联表';
 
--- 角色权限关联表
+-- ==============================================
+-- 9. 角色权限关联表
+-- ==============================================
+
 CREATE TABLE sys_role_permission (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     role_id VARCHAR(32) NOT NULL COMMENT '角色ID',
@@ -205,761 +251,195 @@ CREATE TABLE sys_role_permission (
 ) COMMENT '角色权限关联表';
 
 -- ==============================================
--- 2. 主数据管理表
+-- 10. 角色继承管理存储过程
 -- ==============================================
 
--- 物料主数据表
-CREATE TABLE item_master (
-    item_id VARCHAR(32) PRIMARY KEY COMMENT '物料编码 ITM-YYYYMM-XXXX',
-    item_code VARCHAR(64) NOT NULL COMMENT 'ERP物料编码',
-    item_name VARCHAR(255) NOT NULL COMMENT '物料名称',
-    item_type ENUM('RAW', 'COMPONENT', 'FINISHED', 'TOOL', 'CONSUMABLE') NOT NULL COMMENT '物料类型',
-    uom VARCHAR(16) NOT NULL COMMENT '计量单位',
-    specification TEXT COMMENT '规格说明',
-    supplier_id VARCHAR(32) COMMENT '默认供应商',
-    status ENUM('ACTIVE', 'INACTIVE', 'OBSOLETE') DEFAULT 'ACTIVE' COMMENT '状态',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_item_code (item_code),
-    INDEX idx_item_type (item_type),
-    INDEX idx_supplier (supplier_id),
-    INDEX idx_tenant_site (tenant_id, site_id),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
-) COMMENT '物料主数据表';
+-- 检查角色继承循环
+DELIMITER $$
 
--- 供应商主数据表
-CREATE TABLE supplier_master (
-    supplier_id VARCHAR(32) PRIMARY KEY COMMENT '供应商编码 SUP-XXXXX',
-    supplier_code VARCHAR(64) NOT NULL COMMENT '供应商代码',
-    supplier_name VARCHAR(255) NOT NULL COMMENT '供应商名称',
-    contact_person VARCHAR(100) COMMENT '联系人',
-    contact_phone VARCHAR(50) COMMENT '联系电话',
-    contact_email VARCHAR(100) COMMENT '联系邮箱',
-    address TEXT COMMENT '地址',
-    status ENUM('ACTIVE', 'INACTIVE', 'BLACKLIST') DEFAULT 'ACTIVE' COMMENT '状态',
-    quality_rating DECIMAL(3,2) DEFAULT 5.00 COMMENT '质量评分',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_supplier_code (supplier_code),
-    INDEX idx_status (status),
-    INDEX idx_tenant (tenant_id),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
-) COMMENT '供应商主数据表';
+CREATE PROCEDURE CheckRoleInheritanceCycle(IN p_role_id VARCHAR(32))
+BEGIN
+    DECLARE cycle_found BOOLEAN DEFAULT FALSE;
+    
+    WITH RECURSIVE role_hierarchy AS (
+        SELECT role_id, parent_role_id, 1 as level
+        FROM sys_role WHERE role_id = p_role_id
+        
+        UNION ALL
+        
+        SELECT r.role_id, r.parent_role_id, rh.level + 1
+        FROM sys_role r
+        JOIN role_hierarchy rh ON r.role_id = rh.parent_role_id
+        WHERE rh.level < 10  -- 防止无限递归
+    )
+    SELECT COUNT(*) > 0 INTO cycle_found
+    FROM role_hierarchy
+    WHERE level > 1 AND role_id = p_role_id;
+    
+    IF cycle_found THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Role inheritance cycle detected';
+    END IF;
+END$$
 
--- 客户主数据表
-CREATE TABLE customer_master (
-    customer_id VARCHAR(32) PRIMARY KEY COMMENT '客户编码 CUS-XXXXX',
-    customer_code VARCHAR(64) NOT NULL COMMENT '客户代码',
-    customer_name VARCHAR(255) NOT NULL COMMENT '客户名称',
-    customer_type ENUM('RETAIL', 'WHOLESALE', 'OEM', 'END_USER') DEFAULT 'END_USER' COMMENT '客户类型',
-    contact_person VARCHAR(100) COMMENT '联系人',
-    contact_phone VARCHAR(50) COMMENT '联系电话',
-    contact_email VARCHAR(100) COMMENT '联系邮箱',
-    address TEXT COMMENT '地址',
-    status ENUM('ACTIVE', 'INACTIVE', 'BLACKLIST') DEFAULT 'ACTIVE' COMMENT '状态',
-    credit_limit DECIMAL(18,2) DEFAULT 0 COMMENT '信用额度',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_customer_code (customer_code),
-    INDEX idx_customer_type (customer_type),
-    INDEX idx_status (status),
-    INDEX idx_tenant (tenant_id),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
-) COMMENT '客户主数据表';
+-- 获取角色继承路径
+CREATE PROCEDURE GetRoleInheritancePath(IN p_role_id VARCHAR(32))
+BEGIN
+    WITH RECURSIVE inheritance_path AS (
+        SELECT 
+            role_id,
+            role_code,
+            role_name,
+            parent_role_id,
+            1 as level,
+            CAST(role_code AS CHAR(1000)) as path
+        FROM sys_role 
+        WHERE role_id = p_role_id
+        
+        UNION ALL
+        
+        SELECT 
+            r.role_id,
+            r.role_code,
+            r.role_name,
+            r.parent_role_id,
+            ip.level + 1,
+            CONCAT(r.role_code, ' -> ', ip.path)
+        FROM sys_role r
+        JOIN inheritance_path ip ON r.role_id = ip.parent_role_id
+        WHERE ip.level < 10
+    )
+    SELECT * FROM inheritance_path ORDER BY level DESC;
+END$$
 
--- 库位主数据表
-CREATE TABLE location_master (
-    location_id VARCHAR(32) PRIMARY KEY COMMENT '库位编码 LOC-XXXXX',
-    location_code VARCHAR(64) NOT NULL COMMENT '库位代码',
-    location_name VARCHAR(255) NOT NULL COMMENT '库位名称',
-    location_type ENUM('WAREHOUSE', 'PRODUCTION_LINE', 'QUALITY_AREA', 'SCRAP_AREA', 'RETURN_AREA') NOT NULL COMMENT '库位类型',
-    warehouse_code VARCHAR(64) COMMENT '仓库代码',
-    zone_code VARCHAR(64) COMMENT '区域代码',
-    aisle_code VARCHAR(64) COMMENT '通道代码',
-    rack_code VARCHAR(64) COMMENT '货架代码',
-    shelf_code VARCHAR(64) COMMENT '层代码',
-    position_code VARCHAR(64) COMMENT '位代码',
-    capacity DECIMAL(18,4) DEFAULT 0 COMMENT '容量',
-    capacity_uom VARCHAR(16) COMMENT '容量单位',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE' COMMENT '状态',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_location_code (location_code),
-    INDEX idx_location_type (location_type),
-    INDEX idx_warehouse_code (warehouse_code),
-    INDEX idx_status (status),
-    INDEX idx_tenant_site (tenant_id, site_id),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
-) COMMENT '库位主数据表';
+-- 批量更新角色层级
+CREATE PROCEDURE UpdateRoleLevels()
+BEGIN
+    WITH RECURSIVE role_levels AS (
+        -- 根角色（没有父角色）
+        SELECT 
+            role_id,
+            parent_role_id,
+            0 as calculated_level
+        FROM sys_role 
+        WHERE parent_role_id IS NULL
+        
+        UNION ALL
+        
+        -- 子角色
+        SELECT 
+            r.role_id,
+            r.parent_role_id,
+            rl.calculated_level + 1
+        FROM sys_role r
+        JOIN role_levels rl ON r.parent_role_id = rl.role_id
+    )
+    UPDATE sys_role sr
+    JOIN role_levels rl ON sr.role_id = rl.role_id
+    SET sr.role_level = rl.calculated_level;
+END$$
 
--- 缺陷代码主数据表
-CREATE TABLE defect_code_master (
-    defect_code_id VARCHAR(32) PRIMARY KEY COMMENT '缺陷代码ID',
-    defect_code VARCHAR(32) NOT NULL COMMENT '缺陷代码',
-    defect_name VARCHAR(128) NOT NULL COMMENT '缺陷名称',
-    defect_category VARCHAR(64) COMMENT '缺陷类别',
-    severity_level ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') DEFAULT 'MEDIUM' COMMENT '严重程度',
-    description TEXT COMMENT '缺陷描述',
-    root_cause_category VARCHAR(64) COMMENT '根本原因类别',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_defect_code (defect_code),
-    INDEX idx_defect_category (defect_category),
-    INDEX idx_severity_level (severity_level),
-    INDEX idx_status (status),
-    INDEX idx_tenant (tenant_id),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
-) COMMENT '缺陷代码主数据表';
-
--- 原因代码主数据表
-CREATE TABLE cause_code_master (
-    cause_code_id VARCHAR(32) PRIMARY KEY COMMENT '原因代码ID',
-    cause_code VARCHAR(32) NOT NULL COMMENT '原因代码',
-    cause_name VARCHAR(128) NOT NULL COMMENT '原因名称',
-    cause_category VARCHAR(64) COMMENT '原因类别',
-    description TEXT COMMENT '原因描述',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_cause_code (cause_code),
-    INDEX idx_cause_category (cause_category),
-    INDEX idx_status (status),
-    INDEX idx_tenant (tenant_id),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
-) COMMENT '原因代码主数据表';
+DELIMITER ;
 
 -- ==============================================
--- 3. 环境配置表
+-- 11. 初始化数据
 -- ==============================================
 
--- 工厂管理表
-CREATE TABLE plant (
-    plant_id VARCHAR(32) PRIMARY KEY COMMENT '工厂ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) NOT NULL COMMENT '站点ID',
-    plant_code VARCHAR(64) NOT NULL COMMENT '工厂代码',
-    plant_name VARCHAR(128) NOT NULL COMMENT '工厂名称',
-    plant_type ENUM('MANUFACTURING', 'ASSEMBLY', 'WAREHOUSE', 'LABORATORY') DEFAULT 'MANUFACTURING' COMMENT '工厂类型',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE' COMMENT '状态',
-    address TEXT COMMENT '地址',
-    timezone VARCHAR(32) DEFAULT 'Asia/Shanghai' COMMENT '时区',
-    currency VARCHAR(8) DEFAULT 'CNY' COMMENT '货币',
-    language VARCHAR(8) DEFAULT 'zh-CN' COMMENT '语言',
-    contact_person VARCHAR(64) COMMENT '联系人',
-    contact_phone VARCHAR(32) COMMENT '联系电话',
-    contact_email VARCHAR(128) COMMENT '联系邮箱',
-    description TEXT COMMENT '描述',
-    settings JSON COMMENT '工厂配置',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_plant_code (plant_code),
-    INDEX idx_plant_name (plant_name),
-    INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
-) COMMENT '工厂管理表';
+-- 插入默认租户
+INSERT INTO tenant (tenant_id, tenant_code, tenant_name, tenant_type, status, created_by) 
+VALUES ('TENANT_001', 'DEFAULT', '默认租户', 'ENTERPRISE', 'ACTIVE', 'SYSTEM');
 
--- 产线管理表
-CREATE TABLE production_line (
-    line_id VARCHAR(32) PRIMARY KEY COMMENT '产线ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) NOT NULL COMMENT '站点ID',
-    plant_id VARCHAR(32) NOT NULL COMMENT '工厂ID',
-    line_code VARCHAR(64) NOT NULL COMMENT '产线代码',
-    line_name VARCHAR(128) NOT NULL COMMENT '产线名称',
-    line_type ENUM('ASSEMBLY', 'MANUFACTURING', 'PACKAGING', 'TESTING') DEFAULT 'ASSEMBLY' COMMENT '产线类型',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'SHUTDOWN') DEFAULT 'ACTIVE' COMMENT '状态',
-    capacity_per_hour DECIMAL(10,2) DEFAULT 0 COMMENT '每小时产能',
-    cycle_time DECIMAL(8,2) DEFAULT 0 COMMENT '节拍时间(秒)',
-    efficiency_target DECIMAL(5,2) DEFAULT 85.00 COMMENT '效率目标(%)',
-    quality_target DECIMAL(5,2) DEFAULT 99.00 COMMENT '质量目标(%)',
-    location VARCHAR(255) COMMENT '位置',
-    description TEXT COMMENT '描述',
-    settings JSON COMMENT '产线配置',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_plant (plant_id),
-    INDEX idx_line_code (line_code),
-    INDEX idx_line_name (line_name),
-    INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id),
-    FOREIGN KEY (plant_id) REFERENCES plant(plant_id)
-) COMMENT '产线管理表';
+-- 插入默认部门
+INSERT INTO sys_dept (dept_id, tenant_id, dept_code, dept_name, dept_type, created_by)
+VALUES ('DEPT_001', 'TENANT_001', 'DEFAULT', '默认部门', 'DEPARTMENT', 'SYSTEM');
 
--- 工位管理表
-CREATE TABLE workstation (
-    station_id VARCHAR(32) PRIMARY KEY COMMENT '工位ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) NOT NULL COMMENT '站点ID',
-    plant_id VARCHAR(32) NOT NULL COMMENT '工厂ID',
-    line_id VARCHAR(32) NOT NULL COMMENT '产线ID',
-    station_code VARCHAR(64) NOT NULL COMMENT '工位代码',
-    station_name VARCHAR(128) NOT NULL COMMENT '工位名称',
-    station_type ENUM('ASSEMBLY', 'TESTING', 'INSPECTION', 'PACKAGING', 'STORAGE') DEFAULT 'ASSEMBLY' COMMENT '工位类型',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'BREAKDOWN') DEFAULT 'ACTIVE' COMMENT '状态',
-    station_order INT DEFAULT 1 COMMENT '工位顺序',
-    capacity_per_hour DECIMAL(10,2) DEFAULT 0 COMMENT '每小时产能',
-    cycle_time DECIMAL(8,2) DEFAULT 0 COMMENT '节拍时间(秒)',
-    setup_time DECIMAL(8,2) DEFAULT 0 COMMENT '换型时间(分钟)',
-    location VARCHAR(255) COMMENT '位置',
-    description TEXT COMMENT '描述',
-    settings JSON COMMENT '工位配置',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_plant (plant_id),
-    INDEX idx_line (line_id),
-    INDEX idx_station_code (station_code),
-    INDEX idx_station_name (station_name),
-    INDEX idx_status (status),
-    INDEX idx_station_order (station_order),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id),
-    FOREIGN KEY (plant_id) REFERENCES plant(plant_id),
-    FOREIGN KEY (line_id) REFERENCES production_line(line_id)
-) COMMENT '工位管理表';
+-- 插入系统管理员用户
+INSERT INTO sys_user (user_id, tenant_id, dept_id, username, password_hash, real_name, user_type, status, created_by)
+VALUES ('USER_001', 'TENANT_001', 'DEPT_001', 'admin', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '系统管理员', 'SYSTEM', 'ACTIVE', 'SYSTEM');
 
--- 设备管理表
-CREATE TABLE equipment (
-    equipment_id VARCHAR(32) PRIMARY KEY COMMENT '设备ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) NOT NULL COMMENT '站点ID',
-    plant_id VARCHAR(32) NOT NULL COMMENT '工厂ID',
-    line_id VARCHAR(32) COMMENT '产线ID',
-    station_id VARCHAR(32) COMMENT '工位ID',
-    equipment_code VARCHAR(64) NOT NULL COMMENT '设备代码',
-    equipment_name VARCHAR(128) NOT NULL COMMENT '设备名称',
-    equipment_type ENUM('MACHINE', 'TOOL', 'INSTRUMENT', 'VEHICLE', 'COMPUTER', 'OTHER') DEFAULT 'MACHINE' COMMENT '设备类型',
-    equipment_category VARCHAR(64) COMMENT '设备分类',
-    manufacturer VARCHAR(128) COMMENT '制造商',
-    model VARCHAR(128) COMMENT '型号',
-    serial_number VARCHAR(128) COMMENT '序列号',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'BREAKDOWN', 'RETIRED') DEFAULT 'ACTIVE' COMMENT '状态',
-    purchase_date DATE COMMENT '采购日期',
-    installation_date DATE COMMENT '安装日期',
-    warranty_expire_date DATE COMMENT '保修过期日期',
-    location VARCHAR(255) COMMENT '位置',
-    description TEXT COMMENT '描述',
-    specifications JSON COMMENT '技术规格',
-    settings JSON COMMENT '设备配置',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_plant (plant_id),
-    INDEX idx_line (line_id),
-    INDEX idx_station (station_id),
-    INDEX idx_equipment_code (equipment_code),
-    INDEX idx_equipment_name (equipment_name),
-    INDEX idx_equipment_type (equipment_type),
-    INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id),
-    FOREIGN KEY (plant_id) REFERENCES plant(plant_id),
-    FOREIGN KEY (line_id) REFERENCES production_line(line_id),
-    FOREIGN KEY (station_id) REFERENCES workstation(station_id)
-) COMMENT '设备管理表';
+-- 插入层级角色数据
+INSERT INTO sys_role (role_id, tenant_id, parent_role_id, role_code, role_name, role_type, role_level, data_scope, inherit_permissions, inherit_data_scope, created_by) VALUES
+-- 系统级角色
+('ROLE_SYS_ADMIN', 'TENANT_001', NULL, 'SYSTEM_ADMIN', '系统管理员', 'SYSTEM', 1, 'ALL', FALSE, FALSE, 'SYSTEM'),
 
--- 传感器管理表
-CREATE TABLE sensor (
-    sensor_id VARCHAR(32) PRIMARY KEY COMMENT '传感器ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) NOT NULL COMMENT '站点ID',
-    equipment_id VARCHAR(32) COMMENT '设备ID',
-    sensor_code VARCHAR(64) NOT NULL COMMENT '传感器代码',
-    sensor_name VARCHAR(128) NOT NULL COMMENT '传感器名称',
-    sensor_type ENUM('TEMPERATURE', 'PRESSURE', 'VIBRATION', 'CURRENT', 'VOLTAGE', 'SPEED', 'POSITION', 'OTHER') DEFAULT 'OTHER' COMMENT '传感器类型',
-    unit VARCHAR(16) COMMENT '单位',
-    min_value DECIMAL(18,4) COMMENT '最小值',
-    max_value DECIMAL(18,4) COMMENT '最大值',
-    normal_min DECIMAL(18,4) COMMENT '正常范围最小值',
-    normal_max DECIMAL(18,4) COMMENT '正常范围最大值',
-    warning_min DECIMAL(18,4) COMMENT '警告范围最小值',
-    warning_max DECIMAL(18,4) COMMENT '警告范围最大值',
-    alarm_min DECIMAL(18,4) COMMENT '报警范围最小值',
-    alarm_max DECIMAL(18,4) COMMENT '报警范围最大值',
-    sampling_rate INT DEFAULT 1000 COMMENT '采样频率(Hz)',
-    accuracy DECIMAL(8,4) COMMENT '精度',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE', 'FAULT') DEFAULT 'ACTIVE' COMMENT '状态',
-    location VARCHAR(255) COMMENT '位置',
-    description TEXT COMMENT '描述',
-    calibration_date DATE COMMENT '校准日期',
-    calibration_due_date DATE COMMENT '下次校准日期',
-    settings JSON COMMENT '传感器配置',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_equipment (equipment_id),
-    INDEX idx_sensor_code (sensor_code),
-    INDEX idx_sensor_name (sensor_name),
-    INDEX idx_sensor_type (sensor_type),
-    INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id),
-    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id)
-) COMMENT '传感器管理表';
+-- 租户级角色
+('ROLE_TENANT_ADMIN', 'TENANT_001', 'ROLE_SYS_ADMIN', 'TENANT_ADMIN', '租户管理员', 'TENANT', 2, 'ALL', TRUE, FALSE, 'SYSTEM'),
+('ROLE_DEPT_MANAGER', 'TENANT_001', 'ROLE_TENANT_ADMIN', 'DEPT_MANAGER', '部门经理', 'TENANT', 3, 'DEPT_AND_CHILD', TRUE, TRUE, 'SYSTEM'),
+('ROLE_TEAM_LEADER', 'TENANT_001', 'ROLE_DEPT_MANAGER', 'TEAM_LEADER', '团队负责人', 'TENANT', 4, 'DEPT', TRUE, TRUE, 'SYSTEM'),
+('ROLE_EMPLOYEE', 'TENANT_001', 'ROLE_TEAM_LEADER', 'EMPLOYEE', '普通员工', 'TENANT', 5, 'SELF', TRUE, TRUE, 'SYSTEM'),
 
--- ==============================================
--- 4. 员工管理表
--- ==============================================
+-- 功能角色
+('ROLE_HR_ADMIN', 'TENANT_001', 'ROLE_TENANT_ADMIN', 'HR_ADMIN', 'HR管理员', 'CUSTOM', 2, 'DEPT_AND_CHILD', TRUE, FALSE, 'SYSTEM'),
+('ROLE_HR_SPECIALIST', 'TENANT_001', 'ROLE_HR_ADMIN', 'HR_SPECIALIST', 'HR专员', 'CUSTOM', 3, 'DEPT', TRUE, TRUE, 'SYSTEM');
 
--- 员工管理表
-CREATE TABLE employee (
-    employee_id VARCHAR(32) PRIMARY KEY COMMENT '员工ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) NOT NULL COMMENT '站点ID',
-    employee_code VARCHAR(64) NOT NULL COMMENT '员工工号',
-    employee_name VARCHAR(128) NOT NULL COMMENT '员工姓名',
-    employee_type ENUM('FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERN', 'CONSULTANT') DEFAULT 'FULL_TIME' COMMENT '员工类型',
-    department VARCHAR(64) COMMENT '部门',
-    position VARCHAR(64) COMMENT '职位',
-    job_title VARCHAR(128) COMMENT '职称',
-    level VARCHAR(32) COMMENT '级别',
-    status ENUM('ACTIVE', 'INACTIVE', 'ON_LEAVE', 'TERMINATED') DEFAULT 'ACTIVE' COMMENT '状态',
-    gender ENUM('MALE', 'FEMALE', 'UNKNOWN') DEFAULT 'UNKNOWN' COMMENT '性别',
-    birth_date DATE COMMENT '出生日期',
-    hire_date DATE COMMENT '入职日期',
-    termination_date DATE COMMENT '离职日期',
-    phone VARCHAR(32) COMMENT '电话',
-    email VARCHAR(128) COMMENT '邮箱',
-    address TEXT COMMENT '地址',
-    emergency_contact VARCHAR(128) COMMENT '紧急联系人',
-    emergency_phone VARCHAR(32) COMMENT '紧急联系电话',
-    id_card VARCHAR(32) COMMENT '身份证号',
-    education VARCHAR(64) COMMENT '学历',
-    major VARCHAR(128) COMMENT '专业',
-    graduation_school VARCHAR(128) COMMENT '毕业院校',
-    graduation_date DATE COMMENT '毕业日期',
-    description TEXT COMMENT '描述',
-    settings JSON COMMENT '员工配置',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_employee_code (employee_code),
-    INDEX idx_employee_name (employee_name),
-    INDEX idx_employee_type (employee_type),
-    INDEX idx_department (department),
-    INDEX idx_position (position),
-    INDEX idx_status (status),
-    INDEX idx_hire_date (hire_date),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
-) COMMENT '员工管理表';
+-- 插入权限数据
+INSERT INTO sys_permission (permission_id, tenant_id, permission_code, permission_name, permission_type, resource_type, resource_id, action, created_by) VALUES
+('PERM_001', 'TENANT_001', 'system:user:read', '用户查看权限', 'MENU_ACCESS', 'MENU', 'USER_MANAGE', 'READ', 'SYSTEM'),
+('PERM_002', 'TENANT_001', 'system:user:add', '用户新增权限', 'BUTTON_ACTION', 'BUTTON', 'USER_ADD', 'CREATE', 'SYSTEM'),
+('PERM_003', 'TENANT_001', 'system:user:edit', '用户编辑权限', 'BUTTON_ACTION', 'BUTTON', 'USER_EDIT', 'UPDATE', 'SYSTEM'),
+('PERM_004', 'TENANT_001', 'system:user:delete', '用户删除权限', 'BUTTON_ACTION', 'BUTTON', 'USER_DELETE', 'DELETE', 'SYSTEM'),
+('PERM_005', 'TENANT_001', 'api:user:create', '用户创建API权限', 'API_CALL', 'API', '/api/users', 'POST', 'SYSTEM'),
+('PERM_006', 'TENANT_001', 'api:user:update', '用户更新API权限', 'API_CALL', 'API', '/api/users', 'PUT', 'SYSTEM'),
+('PERM_007', 'TENANT_001', 'data:user:access', '用户数据访问权限', 'DATA_ACCESS', 'TABLE', 'sys_user', 'SELECT', 'SYSTEM'),
+('PERM_008', 'TENANT_001', 'system:manage', '系统管理权限', 'MENU_ACCESS', 'MENU', 'SYSTEM_MANAGE', 'ACCESS', 'SYSTEM'),
+('PERM_009', 'TENANT_001', 'tenant:manage', '租户管理权限', 'MENU_ACCESS', 'MENU', 'TENANT_MANAGE', 'ACCESS', 'SYSTEM'),
+('PERM_010', 'TENANT_001', 'dept:manage', '部门管理权限', 'MENU_ACCESS', 'MENU', 'DEPT_MANAGE', 'ACCESS', 'SYSTEM');
 
--- 技能管理表
-CREATE TABLE skill (
-    skill_id VARCHAR(32) PRIMARY KEY COMMENT '技能ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    skill_code VARCHAR(64) NOT NULL COMMENT '技能代码',
-    skill_name VARCHAR(128) NOT NULL COMMENT '技能名称',
-    skill_category VARCHAR(64) COMMENT '技能分类',
-    skill_type ENUM('TECHNICAL', 'SOFT', 'CERTIFICATION', 'LANGUAGE', 'EQUIPMENT') DEFAULT 'TECHNICAL' COMMENT '技能类型',
-    description TEXT COMMENT '技能描述',
-    level_count INT DEFAULT 5 COMMENT '等级数量',
-    level_names JSON COMMENT '等级名称列表',
-    assessment_method TEXT COMMENT '评估方法',
-    validity_period INT COMMENT '有效期(月)',
-    is_required BOOLEAN DEFAULT FALSE COMMENT '是否必需',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant (tenant_id),
-    INDEX idx_skill_code (skill_code),
-    INDEX idx_skill_name (skill_name),
-    INDEX idx_skill_category (skill_category),
-    INDEX idx_skill_type (skill_type),
-    INDEX idx_status (status),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
-) COMMENT '技能管理表';
+-- 插入菜单数据
+INSERT INTO sys_menu (menu_id, tenant_id, menu_code, menu_name, menu_type, path, component, icon, sort_order, created_by) VALUES
+('MENU_001', 'TENANT_001', 'system', '系统管理', 'DIRECTORY', '/system', 'Layout', 'system', 1, 'SYSTEM'),
+('MENU_002', 'TENANT_001', 'system:user', '用户管理', 'MENU', '/system/user', 'system/user/index', 'user', 1, 'SYSTEM'),
+('MENU_003', 'TENANT_001', 'system:user:add', '新增用户', 'BUTTON', NULL, NULL, 'plus', 1, 'SYSTEM'),
+('MENU_004', 'TENANT_001', 'system:user:edit', '编辑用户', 'BUTTON', NULL, NULL, 'edit', 2, 'SYSTEM'),
+('MENU_005', 'TENANT_001', 'system:user:delete', '删除用户', 'BUTTON', NULL, NULL, 'delete', 3, 'SYSTEM'),
+('MENU_006', 'TENANT_001', 'system:role', '角色管理', 'MENU', '/system/role', 'system/role/index', 'role', 2, 'SYSTEM'),
+('MENU_007', 'TENANT_001', 'system:dept', '部门管理', 'MENU', '/system/dept', 'system/dept/index', 'dept', 3, 'SYSTEM'),
+('MENU_008', 'TENANT_001', 'tenant', '租户管理', 'MENU', '/tenant', 'tenant/index', 'tenant', 2, 'SYSTEM');
 
--- 员工技能关联表
-CREATE TABLE employee_skill (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    employee_id VARCHAR(32) NOT NULL COMMENT '员工ID',
-    skill_id VARCHAR(32) NOT NULL COMMENT '技能ID',
-    skill_level INT DEFAULT 1 COMMENT '技能等级',
-    certification_no VARCHAR(128) COMMENT '证书编号',
-    certification_date DATE COMMENT '认证日期',
-    certification_expire_date DATE COMMENT '证书过期日期',
-    assessment_score DECIMAL(5,2) COMMENT '评估分数',
-    assessor VARCHAR(64) COMMENT '评估人',
-    assessment_date DATE COMMENT '评估日期',
-    notes TEXT COMMENT '备注',
-    status ENUM('ACTIVE', 'INACTIVE', 'EXPIRED') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_employee (employee_id),
-    INDEX idx_skill (skill_id),
-    INDEX idx_skill_level (skill_level),
-    INDEX idx_certification_date (certification_date),
-    INDEX idx_certification_expire_date (certification_expire_date),
-    INDEX idx_status (status),
-    UNIQUE KEY uk_employee_skill (employee_id, skill_id),
-    FOREIGN KEY (employee_id) REFERENCES employee(employee_id),
-    FOREIGN KEY (skill_id) REFERENCES skill(skill_id)
-) COMMENT '员工技能关联表';
+-- 设置菜单层级关系
+UPDATE sys_menu SET parent_id = 'MENU_001' WHERE menu_id IN ('MENU_002', 'MENU_006', 'MENU_007');
+UPDATE sys_menu SET parent_id = 'MENU_002' WHERE menu_id IN ('MENU_003', 'MENU_004', 'MENU_005');
 
--- ==============================================
--- 5. 动态扩展表
--- ==============================================
+-- 插入菜单权限关联
+INSERT INTO sys_menu_permission (menu_id, permission_id, relation_type, created_by) VALUES
+('MENU_001', 'PERM_008', 'REQUIRED', 'SYSTEM'),  -- 系统管理菜单需要系统管理权限
+('MENU_002', 'PERM_001', 'REQUIRED', 'SYSTEM'),  -- 用户管理菜单需要用户查看权限
+('MENU_003', 'PERM_002', 'REQUIRED', 'SYSTEM'),  -- 新增用户按钮需要用户新增权限
+('MENU_004', 'PERM_003', 'REQUIRED', 'SYSTEM'),  -- 编辑用户按钮需要用户编辑权限
+('MENU_005', 'PERM_004', 'REQUIRED', 'SYSTEM'),  -- 删除用户按钮需要用户删除权限
+('MENU_007', 'PERM_010', 'REQUIRED', 'SYSTEM'),  -- 部门管理菜单需要部门管理权限
+('MENU_008', 'PERM_009', 'REQUIRED', 'SYSTEM');  -- 租户管理菜单需要租户管理权限
 
--- 动态实体表
-CREATE TABLE dynamic_entity (
-    entity_id VARCHAR(40) PRIMARY KEY COMMENT '实体ID',
-    entity_type VARCHAR(64) NOT NULL COMMENT '实体类型',
-    entity_name VARCHAR(128) NOT NULL COMMENT '实体名称',
-    entity_code VARCHAR(64) NOT NULL COMMENT '实体代码',
-    description TEXT COMMENT '实体描述',
-    schema_version VARCHAR(16) DEFAULT '1.0' COMMENT 'Schema版本',
-    status ENUM('ACTIVE', 'INACTIVE', 'DRAFT') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_entity_type (entity_type),
-    INDEX idx_entity_code (entity_code),
-    INDEX idx_status (status)
-) COMMENT '动态实体表';
+-- 关联用户角色
+INSERT INTO sys_user_role (user_id, role_id, created_by)
+VALUES ('USER_001', 'ROLE_SYS_ADMIN', 'SYSTEM');
 
--- 动态属性表
-CREATE TABLE dynamic_attribute (
-    attribute_id VARCHAR(40) PRIMARY KEY COMMENT '属性ID',
-    entity_id VARCHAR(40) NOT NULL COMMENT '实体ID',
-    attribute_name VARCHAR(64) NOT NULL COMMENT '属性名称',
-    attribute_code VARCHAR(64) NOT NULL COMMENT '属性代码',
-    attribute_type ENUM('STRING', 'INTEGER', 'DECIMAL', 'BOOLEAN', 'DATE', 'DATETIME', 'TEXT', 'JSON', 'FILE') NOT NULL COMMENT '属性类型',
-    data_type VARCHAR(32) COMMENT '数据类型',
-    length INT COMMENT '长度',
-    precision INT COMMENT '精度',
-    scale INT COMMENT '小数位',
-    nullable BOOLEAN DEFAULT TRUE COMMENT '是否可空',
-    default_value TEXT COMMENT '默认值',
-    validation_rules JSON COMMENT '验证规则',
-    display_order INT DEFAULT 0 COMMENT '显示顺序',
-    is_searchable BOOLEAN DEFAULT FALSE COMMENT '是否可搜索',
-    is_required BOOLEAN DEFAULT FALSE COMMENT '是否必填',
-    description TEXT COMMENT '属性描述',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_entity (entity_id),
-    INDEX idx_attribute_code (attribute_code),
-    INDEX idx_attribute_name (attribute_name),
-    UNIQUE KEY uk_entity_attribute (entity_id, attribute_code),
-    FOREIGN KEY (entity_id) REFERENCES dynamic_entity(entity_id)
-) COMMENT '动态属性表';
+-- 为系统管理员分配所有权限
+INSERT INTO sys_role_permission (role_id, permission_id, created_by)
+VALUES 
+('ROLE_SYS_ADMIN', 'PERM_001', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_002', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_003', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_004', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_005', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_006', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_007', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_008', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_009', 'SYSTEM'),
+('ROLE_SYS_ADMIN', 'PERM_010', 'SYSTEM');
 
--- 动态属性值表
-CREATE TABLE dynamic_attribute_value (
-    value_id VARCHAR(40) PRIMARY KEY COMMENT '值ID',
-    entity_id VARCHAR(40) NOT NULL COMMENT '实体ID',
-    attribute_id VARCHAR(40) NOT NULL COMMENT '属性ID',
-    record_id VARCHAR(64) NOT NULL COMMENT '记录ID',
-    attribute_value TEXT COMMENT '属性值',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_entity (entity_id),
-    INDEX idx_attribute (attribute_id),
-    INDEX idx_record (record_id),
-    UNIQUE KEY uk_entity_attribute_record (entity_id, attribute_id, record_id),
-    FOREIGN KEY (entity_id) REFERENCES dynamic_entity(entity_id),
-    FOREIGN KEY (attribute_id) REFERENCES dynamic_attribute(attribute_id)
-) COMMENT '动态属性值表';
+-- 为租户管理员分配租户级权限
+INSERT INTO sys_role_permission (role_id, permission_id, created_by)
+VALUES 
+('ROLE_TENANT_ADMIN', 'PERM_009', 'SYSTEM'),  -- 租户管理权限
+('ROLE_TENANT_ADMIN', 'PERM_010', 'SYSTEM');  -- 部门管理权限
 
--- 通用事件类型定义表（元数据驱动）
-CREATE TABLE trace_event_type (
-    event_type_id VARCHAR(32) PRIMARY KEY COMMENT '事件类型ID',
-    event_type_code VARCHAR(64) NOT NULL UNIQUE COMMENT '事件类型代码',
-    category VARCHAR(32) NOT NULL COMMENT '事件类别',
-    event_name VARCHAR(128) NOT NULL COMMENT '事件名称',
-    description TEXT COMMENT '事件描述',
-    schema_definition JSON NOT NULL COMMENT '动态Schema定义',
-    business_rules JSON COMMENT '业务规则配置',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_event_type_code (event_type_code),
-    INDEX idx_category (category),
-    INDEX idx_status (status)
-) COMMENT '通用事件类型定义表';
+-- 为部门经理分配部门级权限
+INSERT INTO sys_role_permission (role_id, permission_id, created_by)
+VALUES 
+('ROLE_DEPT_MANAGER', 'PERM_001', 'SYSTEM');  -- 用户查看权限
 
--- 通用事件记录表（支持任意业务事件）
-CREATE TABLE universal_trace_event (
-    event_id VARCHAR(40) PRIMARY KEY COMMENT '事件ID',
-    event_type_id VARCHAR(32) NOT NULL COMMENT '事件类型ID',
-    entity_type VARCHAR(32) NOT NULL COMMENT '实体类型',
-    entity_id VARCHAR(64) NOT NULL COMMENT '实体ID',
-    event_data JSON NOT NULL COMMENT '动态数据存储',
-    event_time DATETIME NOT NULL COMMENT '事件时间',
-    source_system VARCHAR(64) COMMENT '来源系统',
-    source_user VARCHAR(64) COMMENT '操作用户',
-    correlation_id VARCHAR(64) COMMENT '关联ID',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_event_type (event_type_id),
-    INDEX idx_entity (entity_type, entity_id),
-    INDEX idx_event_time (event_time),
-    INDEX idx_source_system (source_system),
-    INDEX idx_correlation_id (correlation_id),
-    FOREIGN KEY (event_type_id) REFERENCES trace_event_type(event_type_id)
-) COMMENT '通用事件记录表';
+-- 设置部门负责人
+UPDATE sys_dept SET manager_id = 'USER_001' WHERE dept_id = 'DEPT_001';
 
--- ==============================================
--- 6. 系统配置表
--- ==============================================
-
--- 系统配置表
-CREATE TABLE sys_config (
-    config_id VARCHAR(32) PRIMARY KEY COMMENT '配置ID',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
-    config_group VARCHAR(64) NOT NULL COMMENT '配置分组',
-    config_key VARCHAR(128) NOT NULL COMMENT '配置键',
-    config_value TEXT COMMENT '配置值',
-    config_type ENUM('STRING', 'INTEGER', 'DECIMAL', 'BOOLEAN', 'JSON', 'TEXT') DEFAULT 'STRING' COMMENT '配置类型',
-    description TEXT COMMENT '配置描述',
-    is_system BOOLEAN DEFAULT FALSE COMMENT '是否系统配置',
-    is_encrypted BOOLEAN DEFAULT FALSE COMMENT '是否加密',
-    validation_rule VARCHAR(255) COMMENT '验证规则',
-    default_value TEXT COMMENT '默认值',
-    sort_order INT DEFAULT 0 COMMENT '排序',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_config_group (config_group),
-    INDEX idx_config_key (config_key),
-    INDEX idx_is_system (is_system),
-    INDEX idx_status (status),
-    UNIQUE KEY uk_tenant_site_group_key (tenant_id, site_id, config_group, config_key),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
-) COMMENT '系统配置表';
-
--- 系统字典表
-CREATE TABLE sys_dict (
-    dict_id VARCHAR(32) PRIMARY KEY COMMENT '字典ID',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    dict_type VARCHAR(64) NOT NULL COMMENT '字典类型',
-    dict_code VARCHAR(64) NOT NULL COMMENT '字典代码',
-    dict_label VARCHAR(128) NOT NULL COMMENT '字典标签',
-    dict_value VARCHAR(255) COMMENT '字典值',
-    parent_id VARCHAR(32) COMMENT '父字典ID',
-    sort_order INT DEFAULT 0 COMMENT '排序',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    css_class VARCHAR(128) COMMENT 'CSS类名',
-    list_class ENUM('DEFAULT', 'PRIMARY', 'SUCCESS', 'INFO', 'WARNING', 'DANGER') DEFAULT 'DEFAULT' COMMENT '列表样式',
-    is_default BOOLEAN DEFAULT FALSE COMMENT '是否默认',
-    description TEXT COMMENT '字典描述',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant (tenant_id),
-    INDEX idx_dict_type (dict_type),
-    INDEX idx_dict_code (dict_code),
-    INDEX idx_parent_id (parent_id),
-    INDEX idx_status (status),
-    UNIQUE KEY uk_tenant_type_code (tenant_id, dict_type, dict_code),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (parent_id) REFERENCES sys_dict(dict_id)
-) COMMENT '系统字典表';
-
--- 系统参数表
-CREATE TABLE sys_parameter (
-    parameter_id VARCHAR(32) PRIMARY KEY COMMENT '参数ID',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
-    parameter_group VARCHAR(64) NOT NULL COMMENT '参数分组',
-    parameter_name VARCHAR(128) NOT NULL COMMENT '参数名称',
-    parameter_code VARCHAR(128) NOT NULL COMMENT '参数代码',
-    parameter_value TEXT COMMENT '参数值',
-    parameter_type ENUM('STRING', 'INTEGER', 'DECIMAL', 'BOOLEAN', 'JSON', 'TEXT', 'FILE', 'URL') DEFAULT 'STRING' COMMENT '参数类型',
-    description TEXT COMMENT '参数描述',
-    is_system BOOLEAN DEFAULT FALSE COMMENT '是否系统参数',
-    is_required BOOLEAN DEFAULT FALSE COMMENT '是否必需',
-    is_readonly BOOLEAN DEFAULT FALSE COMMENT '是否只读',
-    validation_rule VARCHAR(255) COMMENT '验证规则',
-    default_value TEXT COMMENT '默认值',
-    sort_order INT DEFAULT 0 COMMENT '排序',
-    status ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE' COMMENT '状态',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_parameter_group (parameter_group),
-    INDEX idx_parameter_code (parameter_code),
-    INDEX idx_is_system (is_system),
-    INDEX idx_status (status),
-    UNIQUE KEY uk_tenant_site_group_code (tenant_id, site_id, parameter_group, parameter_code),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
-) COMMENT '系统参数表';
-
--- 系统通知表
-CREATE TABLE sys_notification (
-    notification_id VARCHAR(32) PRIMARY KEY COMMENT '通知ID',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
-    notification_type ENUM('SYSTEM', 'BUSINESS', 'ALERT', 'REMINDER', 'ANNOUNCEMENT') DEFAULT 'SYSTEM' COMMENT '通知类型',
-    notification_level ENUM('INFO', 'WARNING', 'ERROR', 'CRITICAL') DEFAULT 'INFO' COMMENT '通知级别',
-    title VARCHAR(255) NOT NULL COMMENT '通知标题',
-    content TEXT NOT NULL COMMENT '通知内容',
-    target_type ENUM('ALL', 'USER', 'ROLE', 'DEPARTMENT', 'CUSTOM') DEFAULT 'ALL' COMMENT '目标类型',
-    target_ids JSON COMMENT '目标ID列表',
-    sender_id VARCHAR(32) COMMENT '发送者ID',
-    sender_name VARCHAR(128) COMMENT '发送者姓名',
-    is_read BOOLEAN DEFAULT FALSE COMMENT '是否已读',
-    read_time DATETIME COMMENT '阅读时间',
-    expire_time DATETIME COMMENT '过期时间',
-    status ENUM('DRAFT', 'SENT', 'READ', 'EXPIRED', 'CANCELLED') DEFAULT 'DRAFT' COMMENT '状态',
-    attachments JSON COMMENT '附件列表',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_notification_type (notification_type),
-    INDEX idx_notification_level (notification_level),
-    INDEX idx_target_type (target_type),
-    INDEX idx_sender_id (sender_id),
-    INDEX idx_is_read (is_read),
-    INDEX idx_expire_time (expire_time),
-    INDEX idx_status (status),
-    INDEX idx_created_at (created_at),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id),
-    FOREIGN KEY (site_id) REFERENCES site(site_id)
-) COMMENT '系统通知表';
-
--- 系统任务调度表
-CREATE TABLE sys_job (
-    job_id VARCHAR(32) PRIMARY KEY COMMENT '任务ID',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    job_name VARCHAR(128) NOT NULL COMMENT '任务名称',
-    job_group VARCHAR(64) NOT NULL COMMENT '任务分组',
-    job_class VARCHAR(255) NOT NULL COMMENT '任务类名',
-    method_name VARCHAR(128) COMMENT '方法名',
-    method_params VARCHAR(255) COMMENT '方法参数',
-    cron_expression VARCHAR(128) COMMENT 'Cron表达式',
-    misfire_policy ENUM('DO_NOTHING', 'FIRE_ONCE_NOW', 'IGNORE_MISFIRE') DEFAULT 'DO_NOTHING' COMMENT '错失执行策略',
-    concurrent BOOLEAN DEFAULT FALSE COMMENT '是否并发执行',
-    status ENUM('NORMAL', 'PAUSE', 'DELETE') DEFAULT 'NORMAL' COMMENT '状态',
-    description TEXT COMMENT '任务描述',
-    last_run_time DATETIME COMMENT '上次执行时间',
-    next_run_time DATETIME COMMENT '下次执行时间',
-    run_count INT DEFAULT 0 COMMENT '执行次数',
-    success_count INT DEFAULT 0 COMMENT '成功次数',
-    fail_count INT DEFAULT 0 COMMENT '失败次数',
-    last_result TEXT COMMENT '上次执行结果',
-    last_error TEXT COMMENT '上次执行错误',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_tenant (tenant_id),
-    INDEX idx_job_group (job_group),
-    INDEX idx_status (status),
-    INDEX idx_next_run_time (next_run_time),
-    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
-) COMMENT '系统任务调度表';
-
--- ==============================================
--- 7. 扩展数据库注册表
--- ==============================================
-
--- 扩展数据库注册表
-CREATE TABLE extension_database (
-    db_id VARCHAR(32) PRIMARY KEY COMMENT '数据库ID',
-    db_name VARCHAR(64) NOT NULL UNIQUE COMMENT '数据库名称',
-    db_type VARCHAR(32) NOT NULL COMMENT '数据库类型',
-    db_description VARCHAR(255) COMMENT '数据库描述',
-    business_module VARCHAR(64) NOT NULL COMMENT '业务模块',
-    version VARCHAR(16) DEFAULT '1.0' COMMENT '版本',
-    status ENUM('ACTIVE', 'INACTIVE', 'MAINTENANCE') DEFAULT 'ACTIVE' COMMENT '状态',
-    connection_config JSON COMMENT '连接配置',
-    api_endpoints JSON COMMENT 'API端点',
-    dependencies JSON COMMENT '依赖关系',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_db_name (db_name),
-    INDEX idx_db_type (db_type),
-    INDEX idx_business_module (business_module),
-    INDEX idx_status (status)
-) COMMENT '扩展数据库注册表';
-
--- 跨数据库数据同步表
-CREATE TABLE cross_db_sync (
-    sync_id VARCHAR(32) PRIMARY KEY COMMENT '同步ID',
-    source_db VARCHAR(64) NOT NULL COMMENT '源数据库',
-    target_db VARCHAR(64) NOT NULL COMMENT '目标数据库',
-    source_table VARCHAR(64) NOT NULL COMMENT '源表',
-    target_table VARCHAR(64) NOT NULL COMMENT '目标表',
-    sync_type ENUM('REAL_TIME', 'BATCH', 'EVENT_DRIVEN') DEFAULT 'BATCH' COMMENT '同步类型',
-    sync_frequency VARCHAR(32) COMMENT '同步频率',
-    last_sync_time DATETIME COMMENT '最后同步时间',
-    sync_status ENUM('ACTIVE', 'PAUSED', 'ERROR') DEFAULT 'ACTIVE' COMMENT '同步状态',
-    error_message TEXT COMMENT '错误信息',
-    sync_config JSON COMMENT '同步配置',
-    created_by VARCHAR(64) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by VARCHAR(64),
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_source_db (source_db),
-    INDEX idx_target_db (target_db),
-    INDEX idx_sync_type (sync_type),
-    INDEX idx_sync_status (sync_status),
-    INDEX idx_last_sync_time (last_sync_time)
-) COMMENT '跨数据库数据同步表';
-
--- 添加外键约束
-ALTER TABLE item_master ADD CONSTRAINT fk_item_supplier FOREIGN KEY (supplier_id) REFERENCES supplier_master(supplier_id);
+-- 更新角色层级
+CALL UpdateRoleLevels();
