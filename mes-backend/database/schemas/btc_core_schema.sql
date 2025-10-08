@@ -686,102 +686,182 @@ CREATE TABLE measure_record (
 -- 15. 初始化数据
 -- ==============================================
 
--- 插入默认租户
-INSERT INTO tenant (tenant_id, tenant_code, tenant_name, tenant_type, status, created_by) 
-VALUES ('TENANT_001', 'DEFAULT', '默认租户', 'ENTERPRISE', 'ACTIVE', 'SYSTEM');
+-- 插入三个租户数据
+INSERT INTO tenant (
+    tenant_id, 
+    tenant_code, 
+    tenant_name, 
+    tenant_type, 
+    status, 
+    contact_person,
+    contact_email,
+    industry,
+    scale,
+    subscription_plan,
+    description,
+    created_by
+) VALUES 
+-- 英国总公司 - 只读用户，主要供英国领导和IT查看
+('TENANT_UK_HEAD', 'UK_HEAD', '英国总公司', 'ENTERPRISE', 'ACTIVE', 'IT Administrator', 'it@ukhead.com', 'Manufacturing', 'Large', 'ENTERPRISE', '英国总公司，大部分用户为只读用户，主要供英国领导和IT部门进行数据查看和分析', 'SYSTEM'),
 
--- 插入默认部门
+-- 内网用户 - MES系统主要用户群体，100-300人规模
+('TENANT_INERT', 'INERT', '内网用户', 'ENTERPRISE', 'ACTIVE', 'MES Administrator', 'admin@inert.com', 'Manufacturing', 'Medium', 'STANDARD', '内网用户群体，MES系统的主要用户，当前规模约100人，未来可扩展至300人', 'SYSTEM'),
+
+-- 供应商群体 - 包括模具供应商、原材料供应商等
+('TENANT_SUPPLIER', 'SUPPLIER', '供应商群体', 'SMALL_MEDIUM', 'ACTIVE', 'Supplier Manager', 'supplier@company.com', 'Supply Chain', 'Medium', 'BASIC', '供应商群体，包括模具供应商、原材料供应商等外部合作伙伴', 'SYSTEM');
+
+-- 为每个租户插入默认部门
 INSERT INTO sys_dept (dept_id, tenant_id, dept_code, dept_name, dept_type, created_by)
-VALUES ('DEPT_001', 'TENANT_001', 'DEFAULT', '默认部门', 'DEPARTMENT', 'SYSTEM');
+VALUES 
+-- 英国总公司默认部门
+('DEPT_UK_HEAD', 'TENANT_UK_HEAD', 'UK_IT', 'IT部门', 'DEPARTMENT', 'SYSTEM'),
+('DEPT_UK_LEADERSHIP', 'TENANT_UK_HEAD', 'UK_LEADERSHIP', '领导层', 'DEPARTMENT', 'SYSTEM'),
 
--- 插入系统管理员用户
+-- 内网用户默认部门
+('DEPT_INERT_PRODUCTION', 'TENANT_INERT', 'PRODUCTION', '生产部门', 'DEPARTMENT', 'SYSTEM'),
+('DEPT_INERT_QUALITY', 'TENANT_INERT', 'QUALITY', '质量部门', 'DEPARTMENT', 'SYSTEM'),
+('DEPT_INERT_WAREHOUSE', 'TENANT_INERT', 'WAREHOUSE', '仓库部门', 'DEPARTMENT', 'SYSTEM'),
+('DEPT_INERT_MAINTENANCE', 'TENANT_INERT', 'MAINTENANCE', '维护部门', 'DEPARTMENT', 'SYSTEM'),
+
+-- 供应商群体默认部门
+('DEPT_SUPPLIER_MOLD', 'TENANT_SUPPLIER', 'MOLD_SUPPLIER', '模具供应商', 'DEPARTMENT', 'SYSTEM'),
+('DEPT_SUPPLIER_RAW', 'TENANT_SUPPLIER', 'RAW_MATERIAL', '原材料供应商', 'DEPARTMENT', 'SYSTEM');
+
+-- 为每个租户插入管理员用户
 INSERT INTO sys_user (user_id, tenant_id, dept_id, username, password_hash, real_name, user_type, status, created_by)
-VALUES ('USER_001', 'TENANT_001', 'DEPT_001', 'admin', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '系统管理员', 'SYSTEM', 'ACTIVE', 'SYSTEM');
+VALUES 
+-- 英国总公司管理员
+('USER_UK_ADMIN', 'TENANT_UK_HEAD', 'DEPT_UK_HEAD', 'uk_admin', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '英国IT管理员', 'SYSTEM', 'ACTIVE', 'SYSTEM'),
+('USER_UK_LEADER', 'TENANT_UK_HEAD', 'DEPT_UK_LEADERSHIP', 'uk_leader', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '英国领导', 'READONLY', 'ACTIVE', 'SYSTEM'),
+
+-- 内网用户管理员
+('USER_INERT_ADMIN', 'TENANT_INERT', 'DEPT_INERT_PRODUCTION', 'inert_admin', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '内网管理员', 'SYSTEM', 'ACTIVE', 'SYSTEM'),
+('USER_INERT_OPERATOR', 'TENANT_INERT', 'DEPT_INERT_PRODUCTION', 'inert_operator', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '内网操作员', 'NORMAL', 'ACTIVE', 'SYSTEM'),
+
+-- 供应商管理员
+('USER_SUPPLIER_ADMIN', 'TENANT_SUPPLIER', 'DEPT_SUPPLIER_MOLD', 'supplier_admin', '$2a$10$7JB720yubVSOfvVame6cOu7L2fR6Vj8Q9qN8Q9qN8Q9qN8Q9qN8Q9q', '供应商管理员', 'SUPPLIER', 'ACTIVE', 'SYSTEM');
 
 -- 插入层级角色数据
 INSERT INTO sys_role (role_id, tenant_id, parent_role_id, role_code, role_name, role_type, role_level, data_scope, inherit_permissions, inherit_data_scope, created_by) VALUES
--- 系统级角色
-('ROLE_SYS_ADMIN', 'TENANT_001', NULL, 'SYSTEM_ADMIN', '系统管理员', 'SYSTEM', 1, 'ALL', FALSE, FALSE, 'SYSTEM'),
+-- 英国总公司角色
+('ROLE_UK_ADMIN', 'TENANT_UK_HEAD', NULL, 'UK_ADMIN', '英国管理员', 'SYSTEM', 1, 'ALL', FALSE, FALSE, 'SYSTEM'),
+('ROLE_UK_VIEWER', 'TENANT_UK_HEAD', NULL, 'UK_VIEWER', '英国查看者', 'READONLY', 2, 'ALL', FALSE, FALSE, 'SYSTEM'),
+('ROLE_UK_IT', 'TENANT_UK_HEAD', 'ROLE_UK_ADMIN', 'UK_IT', '英国IT', 'NORMAL', 2, 'ALL', TRUE, TRUE, 'SYSTEM'),
+('ROLE_UK_LEADER', 'TENANT_UK_HEAD', 'ROLE_UK_VIEWER', 'UK_LEADER', '英国领导', 'READONLY', 3, 'ALL', TRUE, TRUE, 'SYSTEM'),
 
--- 租户级角色
-('ROLE_TENANT_ADMIN', 'TENANT_001', 'ROLE_SYS_ADMIN', 'TENANT_ADMIN', '租户管理员', 'TENANT', 2, 'ALL', TRUE, FALSE, 'SYSTEM'),
-('ROLE_DEPT_MANAGER', 'TENANT_001', 'ROLE_TENANT_ADMIN', 'DEPT_MANAGER', '部门经理', 'TENANT', 3, 'DEPT_AND_CHILD', TRUE, TRUE, 'SYSTEM'),
-('ROLE_TEAM_LEADER', 'TENANT_001', 'ROLE_DEPT_MANAGER', 'TEAM_LEADER', '团队负责人', 'TENANT', 4, 'DEPT', TRUE, TRUE, 'SYSTEM'),
-('ROLE_EMPLOYEE', 'TENANT_001', 'ROLE_TEAM_LEADER', 'EMPLOYEE', '普通员工', 'TENANT', 5, 'SELF', TRUE, TRUE, 'SYSTEM'),
+-- 内网用户角色
+('ROLE_INERT_ADMIN', 'TENANT_INERT', NULL, 'INERT_ADMIN', '内网管理员', 'SYSTEM', 1, 'ALL', FALSE, FALSE, 'SYSTEM'),
+('ROLE_INERT_MANAGER', 'TENANT_INERT', 'ROLE_INERT_ADMIN', 'INERT_MANAGER', '内网经理', 'NORMAL', 2, 'DEPT_AND_CHILD', TRUE, TRUE, 'SYSTEM'),
+('ROLE_INERT_OPERATOR', 'TENANT_INERT', 'ROLE_INERT_MANAGER', 'INERT_OPERATOR', '内网操作员', 'NORMAL', 3, 'DEPT', TRUE, TRUE, 'SYSTEM'),
+('ROLE_INERT_VIEWER', 'TENANT_INERT', 'ROLE_INERT_MANAGER', 'INERT_VIEWER', '内网查看员', 'READONLY', 3, 'DEPT', TRUE, TRUE, 'SYSTEM'),
 
--- 功能角色
-('ROLE_HR_ADMIN', 'TENANT_001', 'ROLE_TENANT_ADMIN', 'HR_ADMIN', 'HR管理员', 'CUSTOM', 2, 'DEPT_AND_CHILD', TRUE, FALSE, 'SYSTEM'),
-('ROLE_HR_SPECIALIST', 'TENANT_001', 'ROLE_HR_ADMIN', 'HR_SPECIALIST', 'HR专员', 'CUSTOM', 3, 'DEPT', TRUE, TRUE, 'SYSTEM');
+-- 供应商角色
+('ROLE_SUPPLIER_ADMIN', 'TENANT_SUPPLIER', NULL, 'SUPPLIER_ADMIN', '供应商管理员', 'SUPPLIER', 1, 'ALL', FALSE, FALSE, 'SYSTEM'),
+('ROLE_SUPPLIER_MOLD', 'TENANT_SUPPLIER', 'ROLE_SUPPLIER_ADMIN', 'SUPPLIER_MOLD', '模具供应商', 'SUPPLIER', 2, 'DEPT', TRUE, TRUE, 'SYSTEM'),
+('ROLE_SUPPLIER_RAW', 'TENANT_SUPPLIER', 'ROLE_SUPPLIER_ADMIN', 'SUPPLIER_RAW', '原材料供应商', 'SUPPLIER', 2, 'DEPT', TRUE, TRUE, 'SYSTEM'),
+
+-- 内网用户功能角色
+('ROLE_INERT_HR', 'TENANT_INERT', 'ROLE_INERT_MANAGER', 'INERT_HR', '内网HR', 'CUSTOM', 3, 'DEPT', TRUE, TRUE, 'SYSTEM'),
+('ROLE_INERT_FINANCE', 'TENANT_INERT', 'ROLE_INERT_MANAGER', 'INERT_FINANCE', '内网财务', 'CUSTOM', 3, 'DEPT', TRUE, TRUE, 'SYSTEM');
 
 -- 插入权限数据
 INSERT INTO sys_permission (permission_id, tenant_id, permission_code, permission_name, permission_type, resource_type, resource_id, action, created_by) VALUES
-('PERM_001', 'TENANT_001', 'system:user:read', '用户查看权限', 'MENU_ACCESS', 'MENU', 'USER_MANAGE', 'READ', 'SYSTEM'),
-('PERM_002', 'TENANT_001', 'system:user:add', '用户新增权限', 'BUTTON_ACTION', 'BUTTON', 'USER_ADD', 'CREATE', 'SYSTEM'),
-('PERM_003', 'TENANT_001', 'system:user:edit', '用户编辑权限', 'BUTTON_ACTION', 'BUTTON', 'USER_EDIT', 'UPDATE', 'SYSTEM'),
-('PERM_004', 'TENANT_001', 'system:user:delete', '用户删除权限', 'BUTTON_ACTION', 'BUTTON', 'USER_DELETE', 'DELETE', 'SYSTEM'),
-('PERM_005', 'TENANT_001', 'api:user:create', '用户创建API权限', 'API_CALL', 'API', '/api/users', 'POST', 'SYSTEM'),
-('PERM_006', 'TENANT_001', 'api:user:update', '用户更新API权限', 'API_CALL', 'API', '/api/users', 'PUT', 'SYSTEM'),
-('PERM_007', 'TENANT_001', 'data:user:access', '用户数据访问权限', 'DATA_ACCESS', 'TABLE', 'sys_user', 'SELECT', 'SYSTEM'),
-('PERM_008', 'TENANT_001', 'system:manage', '系统管理权限', 'MENU_ACCESS', 'MENU', 'SYSTEM_MANAGE', 'ACCESS', 'SYSTEM'),
-('PERM_009', 'TENANT_001', 'tenant:manage', '租户管理权限', 'MENU_ACCESS', 'MENU', 'TENANT_MANAGE', 'ACCESS', 'SYSTEM'),
-('PERM_010', 'TENANT_001', 'dept:manage', '部门管理权限', 'MENU_ACCESS', 'MENU', 'DEPT_MANAGE', 'ACCESS', 'SYSTEM');
+-- 英国总公司权限
+('PERM_UK_VIEW', 'TENANT_UK_HEAD', 'uk:data:view', '英国数据查看', 'MENU_ACCESS', 'MENU', 'UK_DASHBOARD', 'READ', 'SYSTEM'),
+('PERM_UK_REPORT', 'TENANT_UK_HEAD', 'uk:report:view', '英国报表查看', 'MENU_ACCESS', 'MENU', 'UK_REPORTS', 'READ', 'SYSTEM'),
+
+-- 内网用户权限
+('PERM_INERT_PRODUCTION', 'TENANT_INERT', 'inert:production:manage', '生产管理', 'MENU_ACCESS', 'MENU', 'PRODUCTION_MANAGE', 'WRITE', 'SYSTEM'),
+('PERM_INERT_QUALITY', 'TENANT_INERT', 'inert:quality:manage', '质量管理', 'MENU_ACCESS', 'MENU', 'QUALITY_MANAGE', 'WRITE', 'SYSTEM'),
+('PERM_INERT_WAREHOUSE', 'TENANT_INERT', 'inert:warehouse:manage', '仓库管理', 'MENU_ACCESS', 'MENU', 'WAREHOUSE_MANAGE', 'WRITE', 'SYSTEM'),
+('PERM_INERT_MAINTENANCE', 'TENANT_INERT', 'inert:maintenance:manage', '维护管理', 'MENU_ACCESS', 'MENU', 'MAINTENANCE_MANAGE', 'WRITE', 'SYSTEM'),
+
+-- 供应商权限
+('PERM_SUPPLIER_MOLD', 'TENANT_SUPPLIER', 'supplier:mold:manage', '模具管理', 'MENU_ACCESS', 'MENU', 'MOLD_MANAGE', 'WRITE', 'SYSTEM'),
+('PERM_SUPPLIER_RAW', 'TENANT_SUPPLIER', 'supplier:raw:manage', '原材料管理', 'MENU_ACCESS', 'MENU', 'RAW_MATERIAL_MANAGE', 'WRITE', 'SYSTEM');
 
 -- 插入菜单数据
 INSERT INTO sys_menu (menu_id, tenant_id, menu_code, menu_name, menu_type, path, component, icon, sort_order, created_by) VALUES
-('MENU_001', 'TENANT_001', 'system', '系统管理', 'DIRECTORY', '/system', 'Layout', 'system', 1, 'SYSTEM'),
-('MENU_002', 'TENANT_001', 'system:user', '用户管理', 'MENU', '/system/user', 'system/user/index', 'user', 1, 'SYSTEM'),
-('MENU_003', 'TENANT_001', 'system:user:add', '新增用户', 'BUTTON', NULL, NULL, 'plus', 1, 'SYSTEM'),
-('MENU_004', 'TENANT_001', 'system:user:edit', '编辑用户', 'BUTTON', NULL, NULL, 'edit', 2, 'SYSTEM'),
-('MENU_005', 'TENANT_001', 'system:user:delete', '删除用户', 'BUTTON', NULL, NULL, 'delete', 3, 'SYSTEM'),
-('MENU_006', 'TENANT_001', 'system:role', '角色管理', 'MENU', '/system/role', 'system/role/index', 'role', 2, 'SYSTEM'),
-('MENU_007', 'TENANT_001', 'system:dept', '部门管理', 'MENU', '/system/dept', 'system/dept/index', 'dept', 3, 'SYSTEM'),
-('MENU_008', 'TENANT_001', 'tenant', '租户管理', 'MENU', '/tenant', 'tenant/index', 'tenant', 2, 'SYSTEM');
+-- 英国总公司菜单
+('MENU_UK_DASHBOARD', 'TENANT_UK_HEAD', 'uk:dashboard', '数据看板', 'MENU', '/uk/dashboard', 'uk/dashboard/index', 'dashboard', 1, 'SYSTEM'),
+('MENU_UK_REPORTS', 'TENANT_UK_HEAD', 'uk:reports', '报表中心', 'MENU', '/uk/reports', 'uk/reports/index', 'chart', 2, 'SYSTEM'),
+
+-- 内网用户菜单
+('MENU_INERT_PRODUCTION', 'TENANT_INERT', 'inert:production', '生产管理', 'DIRECTORY', '/production', 'Layout', 'production', 1, 'SYSTEM'),
+('MENU_INERT_WO', 'TENANT_INERT', 'inert:production:wo', '工单管理', 'MENU', '/production/work-order', 'production/work-order/index', 'document', 1, 'SYSTEM'),
+('MENU_INERT_QUALITY', 'TENANT_INERT', 'inert:quality', '质量管理', 'DIRECTORY', '/quality', 'Layout', 'quality', 2, 'SYSTEM'),
+('MENU_INERT_INSPECTION', 'TENANT_INERT', 'inert:quality:inspection', '检验管理', 'MENU', '/quality/inspection', 'quality/inspection/index', 'check', 1, 'SYSTEM'),
+('MENU_INERT_WAREHOUSE', 'TENANT_INERT', 'inert:warehouse', '仓库管理', 'DIRECTORY', '/warehouse', 'Layout', 'warehouse', 3, 'SYSTEM'),
+('MENU_INERT_INVENTORY', 'TENANT_INERT', 'inert:warehouse:inventory', '库存管理', 'MENU', '/warehouse/inventory', 'warehouse/inventory/index', 'box', 1, 'SYSTEM'),
+
+-- 供应商菜单
+('MENU_SUPPLIER_MOLD', 'TENANT_SUPPLIER', 'supplier:mold', '模具管理', 'MENU', '/supplier/mold', 'supplier/mold/index', 'mold', 1, 'SYSTEM'),
+('MENU_SUPPLIER_RAW', 'TENANT_SUPPLIER', 'supplier:raw', '原材料管理', 'MENU', '/supplier/raw-material', 'supplier/raw-material/index', 'material', 2, 'SYSTEM');
 
 -- 设置菜单层级关系
-UPDATE sys_menu SET parent_id = 'MENU_001' WHERE menu_id IN ('MENU_002', 'MENU_006', 'MENU_007');
-UPDATE sys_menu SET parent_id = 'MENU_002' WHERE menu_id IN ('MENU_003', 'MENU_004', 'MENU_005');
+UPDATE sys_menu SET parent_id = 'MENU_INERT_PRODUCTION' WHERE menu_id = 'MENU_INERT_WO';
+UPDATE sys_menu SET parent_id = 'MENU_INERT_QUALITY' WHERE menu_id = 'MENU_INERT_INSPECTION';
+UPDATE sys_menu SET parent_id = 'MENU_INERT_WAREHOUSE' WHERE menu_id = 'MENU_INERT_INVENTORY';
 
 -- 插入菜单权限关联
 INSERT INTO sys_menu_permission (menu_id, permission_id, relation_type, created_by) VALUES
-('MENU_001', 'PERM_008', 'REQUIRED', 'SYSTEM'),  -- 系统管理菜单需要系统管理权限
-('MENU_002', 'PERM_001', 'REQUIRED', 'SYSTEM'),  -- 用户管理菜单需要用户查看权限
-('MENU_003', 'PERM_002', 'REQUIRED', 'SYSTEM'),  -- 新增用户按钮需要用户新增权限
-('MENU_004', 'PERM_003', 'REQUIRED', 'SYSTEM'),  -- 编辑用户按钮需要用户编辑权限
-('MENU_005', 'PERM_004', 'REQUIRED', 'SYSTEM'),  -- 删除用户按钮需要用户删除权限
-('MENU_007', 'PERM_010', 'REQUIRED', 'SYSTEM'),  -- 部门管理菜单需要部门管理权限
-('MENU_008', 'PERM_009', 'REQUIRED', 'SYSTEM');  -- 租户管理菜单需要租户管理权限
+-- 英国总公司菜单权限
+('MENU_UK_DASHBOARD', 'PERM_UK_VIEW', 'REQUIRED', 'SYSTEM'),
+('MENU_UK_REPORTS', 'PERM_UK_REPORT', 'REQUIRED', 'SYSTEM'),
+
+-- 内网用户菜单权限
+('MENU_INERT_PRODUCTION', 'PERM_INERT_PRODUCTION', 'REQUIRED', 'SYSTEM'),
+('MENU_INERT_WO', 'PERM_INERT_PRODUCTION', 'REQUIRED', 'SYSTEM'),
+('MENU_INERT_QUALITY', 'PERM_INERT_QUALITY', 'REQUIRED', 'SYSTEM'),
+('MENU_INERT_INSPECTION', 'PERM_INERT_QUALITY', 'REQUIRED', 'SYSTEM'),
+('MENU_INERT_WAREHOUSE', 'PERM_INERT_WAREHOUSE', 'REQUIRED', 'SYSTEM'),
+('MENU_INERT_INVENTORY', 'PERM_INERT_WAREHOUSE', 'REQUIRED', 'SYSTEM'),
+
+-- 供应商菜单权限
+('MENU_SUPPLIER_MOLD', 'PERM_SUPPLIER_MOLD', 'REQUIRED', 'SYSTEM'),
+('MENU_SUPPLIER_RAW', 'PERM_SUPPLIER_RAW', 'REQUIRED', 'SYSTEM');
 
 -- 关联用户角色
 INSERT INTO sys_user_role (user_id, role_id, created_by)
-VALUES ('USER_001', 'ROLE_SYS_ADMIN', 'SYSTEM');
+VALUES 
+-- 英国总公司用户角色
+('USER_UK_ADMIN', 'ROLE_UK_ADMIN', 'SYSTEM'),
+('USER_UK_LEADER', 'ROLE_UK_LEADER', 'SYSTEM'),
 
--- 为系统管理员分配所有权限
+-- 内网用户角色
+('USER_INERT_ADMIN', 'ROLE_INERT_ADMIN', 'SYSTEM'),
+('USER_INERT_OPERATOR', 'ROLE_INERT_OPERATOR', 'SYSTEM'),
+
+-- 供应商用户角色
+('USER_SUPPLIER_ADMIN', 'ROLE_SUPPLIER_ADMIN', 'SYSTEM');
+
+-- 为角色分配权限
 INSERT INTO sys_role_permission (role_id, permission_id, created_by)
 VALUES 
-('ROLE_SYS_ADMIN', 'PERM_001', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_002', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_003', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_004', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_005', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_006', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_007', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_008', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_009', 'SYSTEM'),
-('ROLE_SYS_ADMIN', 'PERM_010', 'SYSTEM');
+-- 英国总公司角色权限
+('ROLE_UK_ADMIN', 'PERM_UK_VIEW', 'SYSTEM'),
+('ROLE_UK_ADMIN', 'PERM_UK_REPORT', 'SYSTEM'),
+('ROLE_UK_VIEWER', 'PERM_UK_VIEW', 'SYSTEM'),
+('ROLE_UK_LEADER', 'PERM_UK_VIEW', 'SYSTEM'),
 
--- 为租户管理员分配租户级权限
-INSERT INTO sys_role_permission (role_id, permission_id, created_by)
-VALUES 
-('ROLE_TENANT_ADMIN', 'PERM_009', 'SYSTEM'),  -- 租户管理权限
-('ROLE_TENANT_ADMIN', 'PERM_010', 'SYSTEM');  -- 部门管理权限
+-- 内网用户角色权限
+('ROLE_INERT_ADMIN', 'PERM_INERT_PRODUCTION', 'SYSTEM'),
+('ROLE_INERT_ADMIN', 'PERM_INERT_QUALITY', 'SYSTEM'),
+('ROLE_INERT_ADMIN', 'PERM_INERT_WAREHOUSE', 'SYSTEM'),
+('ROLE_INERT_ADMIN', 'PERM_INERT_MAINTENANCE', 'SYSTEM'),
+('ROLE_INERT_MANAGER', 'PERM_INERT_PRODUCTION', 'SYSTEM'),
+('ROLE_INERT_MANAGER', 'PERM_INERT_QUALITY', 'SYSTEM'),
+('ROLE_INERT_OPERATOR', 'PERM_INERT_PRODUCTION', 'SYSTEM'),
 
--- 为部门经理分配部门级权限
-INSERT INTO sys_role_permission (role_id, permission_id, created_by)
-VALUES 
-('ROLE_DEPT_MANAGER', 'PERM_001', 'SYSTEM');  -- 用户查看权限
+-- 供应商角色权限
+('ROLE_SUPPLIER_ADMIN', 'PERM_SUPPLIER_MOLD', 'SYSTEM'),
+('ROLE_SUPPLIER_ADMIN', 'PERM_SUPPLIER_RAW', 'SYSTEM'),
+('ROLE_SUPPLIER_MOLD', 'PERM_SUPPLIER_MOLD', 'SYSTEM'),
+('ROLE_SUPPLIER_RAW', 'PERM_SUPPLIER_RAW', 'SYSTEM');
 
 -- 设置部门负责人
-UPDATE sys_dept SET manager_id = 'USER_001' WHERE dept_id = 'DEPT_001';
-
--- 更新角色层级
+UPDATE sys_dept SET manager_id = 'USER_UK_ADMIN' WHERE dept_id = 'DEPT_UK_HEAD';
+UPDATE sys_dept SET manager_id = 'USER_UK_LEADER' WHERE dept_id = 'DEPT_UK_LEADERSHIP';
+UPDATE sys_dept SET manager_id = 'USER_INERT_ADMIN' WHERE dept_id = 'DEPT_INERT_PRODUCTION';
+UPDATE sys_dept SET manager_id = 'USER_SUPPLIER_ADMIN' WHERE dept_id = 'DEPT_SUPPLIER_MOLD';
 CALL UpdateRoleLevels();
