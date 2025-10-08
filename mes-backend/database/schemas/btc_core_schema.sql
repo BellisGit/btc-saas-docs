@@ -503,7 +503,187 @@ CREATE TABLE workflow_history (
 ) COMMENT '流程历史表';
 
 -- ==============================================
--- 12. 初始化数据
+-- 12. 追溯映射表（基于MES架构文档要求）
+-- ==============================================
+
+-- SN → 批次/工单/箱号/托盘映射
+CREATE TABLE map_sn (
+    sn VARCHAR(64) PRIMARY KEY COMMENT '序列号',
+    lot_id VARCHAR(32) NOT NULL COMMENT '批次ID',
+    wo_id VARCHAR(32) NOT NULL COMMENT '工单ID',
+    box_no VARCHAR(64) COMMENT '箱号',
+    pallet_no VARCHAR(64) COMMENT '托盘号',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    INDEX idx_map_sn_lot (lot_id),
+    INDEX idx_map_sn_box (box_no),
+    INDEX idx_map_sn_pallet (pallet_no),
+    INDEX idx_map_sn_wo (wo_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT 'SN映射表';
+
+-- 箱号 → SN映射
+CREATE TABLE map_box_sn (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    box_no VARCHAR(64) NOT NULL COMMENT '箱号',
+    sn VARCHAR(64) NOT NULL COMMENT '序列号',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_box_sn_box (box_no),
+    INDEX idx_box_sn_sn (sn),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT '箱号SN映射表';
+
+-- 托盘 → 箱号映射
+CREATE TABLE map_pallet_box (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    pallet_no VARCHAR(64) NOT NULL COMMENT '托盘号',
+    box_no VARCHAR(64) NOT NULL COMMENT '箱号',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_pallet_box_pallet (pallet_no),
+    INDEX idx_pallet_box_box (box_no),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT '托盘箱号映射表';
+
+-- 批次 → 用料来源映射
+CREATE TABLE map_lot_material (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    lot_id VARCHAR(32) NOT NULL COMMENT '批次ID',
+    item_id VARCHAR(32) NOT NULL COMMENT '物料ID',
+    supplier_id VARCHAR(32) COMMENT '供应商ID',
+    grn_id VARCHAR(32) COMMENT '收货单ID',
+    mold_id VARCHAR(32) COMMENT '模具ID',
+    qty_used DECIMAL(18,4) COMMENT '用量',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_lot_material_lot (lot_id),
+    INDEX idx_lot_material_item (item_id),
+    INDEX idx_lot_material_supplier (supplier_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT '批次用料映射表';
+
+-- ==============================================
+-- 13. 事件溯源表（基于MES架构文档要求）
+-- ==============================================
+
+-- 所有可追节点抽象为不可变事件
+CREATE TABLE trace_event (
+    event_id VARCHAR(40) PRIMARY KEY COMMENT '事件ID',
+    entity_type VARCHAR(32) NOT NULL COMMENT '实体类型(SN/LOT/WO/GRN/BOX/PLT/INSP)',
+    entity_id VARCHAR(64) NOT NULL COMMENT '实体ID',
+    action VARCHAR(32) NOT NULL COMMENT '动作(START/END/PASS/FAIL/REWORK/MOVE/PACK/SHIP)',
+    occurred_at DATETIME NOT NULL COMMENT '发生时间',
+    op_id VARCHAR(32) COMMENT '对应工序ID',
+    op_name VARCHAR(64) COMMENT '工序名称',
+    op_start_at DATETIME COMMENT '工序开始时间',
+    op_end_at DATETIME COMMENT '工序结束时间',
+    operator_id VARCHAR(64) COMMENT '操作人ID',
+    result VARCHAR(16) COMMENT '结果(PASS/FAIL/REWORK/HOLD)',
+    station_id VARCHAR(64) COMMENT '工位ID',
+    shift_code VARCHAR(16) COMMENT '班次代码',
+    ref_id VARCHAR(64) COMMENT '业务单据ID',
+    data JSON COMMENT '测量值/参数/附件key等',
+    prev_event_id VARCHAR(40) COMMENT '链式追溯-前一个事件ID',
+    correlation_id VARCHAR(64) COMMENT '同事务/同工序相关性ID',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    source_system VARCHAR(32) COMMENT '来源系统',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event_entity (entity_type, entity_id, occurred_at),
+    INDEX idx_event_action (action, occurred_at),
+    INDEX idx_event_operator (operator_id, occurred_at),
+    INDEX idx_event_station (station_id, occurred_at),
+    INDEX idx_event_correlation (correlation_id),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT '追溯事件表';
+
+-- 链路快照（三层：原材料/组件/成品）
+CREATE TABLE trace_link (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    level ENUM('RAW', 'COMPONENT', 'FINISHED') NOT NULL COMMENT '层级',
+    sn VARCHAR(64) COMMENT '序列号',
+    lot_id VARCHAR(32) COMMENT '批次ID',
+    wo_id VARCHAR(32) COMMENT '工单ID',
+    op_id VARCHAR(32) COMMENT '工序ID',
+    op_name VARCHAR(64) COMMENT '工序名称',
+    op_start_at DATETIME COMMENT '工序开始时间',
+    op_end_at DATETIME COMMENT '工序结束时间',
+    operator_id VARCHAR(64) COMMENT '操作人ID',
+    result ENUM('PASS', 'FAIL', 'REWORK', 'HOLD') COMMENT '结果',
+    station_id VARCHAR(64) COMMENT '工位ID',
+    next_sn VARCHAR(64) COMMENT '指向上层的SN',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_trace_link_sn (sn),
+    INDEX idx_trace_link_lot (lot_id),
+    INDEX idx_trace_link_wo (wo_id),
+    INDEX idx_trace_link_next (next_sn),
+    INDEX idx_trace_link_level (level),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT '追溯链路快照表';
+
+-- ==============================================
+-- 14. 测试和测量记录表（基于MES架构文档要求）
+-- ==============================================
+
+-- 测试记录表
+CREATE TABLE test_record (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    sn VARCHAR(64) NOT NULL COMMENT '序列号',
+    lot_id VARCHAR(32) COMMENT '批次ID',
+    wo_id VARCHAR(32) COMMENT '工单ID',
+    station VARCHAR(64) NOT NULL COMMENT '测试工位',
+    test_type VARCHAR(32) COMMENT '测试类型',
+    result VARCHAR(8) NOT NULL COMMENT '结果(PASS/FAIL)',
+    code VARCHAR(32) COMMENT '失败代码',
+    test_data JSON COMMENT '测试数据',
+    tested_at DATETIME NOT NULL COMMENT '测试时间',
+    operator_id VARCHAR(64) COMMENT '测试员ID',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_sn (sn),
+    INDEX idx_lot_id (lot_id),
+    INDEX idx_wo_id (wo_id),
+    INDEX idx_station (station),
+    INDEX idx_tested_at (tested_at),
+    INDEX idx_result (result),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT '测试记录表';
+
+-- 测量记录表
+CREATE TABLE measure_record (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'ID',
+    insp_id VARCHAR(32) COMMENT '检验单ID',
+    test_record_id BIGINT COMMENT '测试记录ID',
+    item_key VARCHAR(64) NOT NULL COMMENT '测量项目',
+    value_num DECIMAL(18,6) COMMENT '数值',
+    unit VARCHAR(16) COMMENT '单位',
+    standard_value DECIMAL(18,6) COMMENT '标准值',
+    upper_limit DECIMAL(18,6) COMMENT '上限',
+    lower_limit DECIMAL(18,6) COMMENT '下限',
+    measured_at DATETIME NOT NULL COMMENT '测量时间',
+    operator_id VARCHAR(64) COMMENT '测量员ID',
+    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
+    site_id VARCHAR(32) COMMENT '站点ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_insp_id (insp_id),
+    INDEX idx_test_record_id (test_record_id),
+    INDEX idx_item_key (item_key),
+    INDEX idx_measured_at (measured_at),
+    FOREIGN KEY (tenant_id) REFERENCES tenant(tenant_id)
+) COMMENT '测量记录表';
+
+-- ==============================================
+-- 15. 初始化数据
 -- ==============================================
 
 -- 插入默认租户
