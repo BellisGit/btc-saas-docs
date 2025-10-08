@@ -165,43 +165,6 @@ CREATE TABLE quality_alert_monitor (
     INDEX idx_is_alert_triggered (is_alert_triggered)
 ) COMMENT '质量异常监控表';
 
--- 设备异常监控表
-CREATE TABLE equipment_alert_monitor (
-    monitor_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '监控ID',
-    tenant_id VARCHAR(32) NOT NULL COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
-    equipment_id VARCHAR(32) NOT NULL COMMENT '设备ID',
-    equipment_code VARCHAR(64) COMMENT '设备代码',
-    equipment_name VARCHAR(255) COMMENT '设备名称',
-    station_id VARCHAR(32) COMMENT '工位ID',
-    monitor_time DATETIME NOT NULL COMMENT '监控时间',
-    equipment_status ENUM('RUNNING', 'IDLE', 'MAINTENANCE', 'BREAKDOWN', 'SETUP') COMMENT '设备状态',
-    oee DECIMAL(5,2) COMMENT 'OEE',
-    availability DECIMAL(5,2) COMMENT '可用率',
-    performance DECIMAL(5,2) COMMENT '性能率',
-    quality DECIMAL(5,2) COMMENT '质量率',
-    temperature DECIMAL(8,2) COMMENT '温度',
-    vibration DECIMAL(8,4) COMMENT '振动值',
-    pressure DECIMAL(8,2) COMMENT '压力',
-    current_power DECIMAL(8,2) COMMENT '当前功率',
-    normal_oee_min DECIMAL(5,2) COMMENT '正常OEE最小值',
-    warning_oee_threshold DECIMAL(5,2) COMMENT '警告OEE阈值',
-    critical_oee_threshold DECIMAL(5,2) COMMENT '严重OEE阈值',
-    alert_level ENUM('NORMAL', 'WARNING', 'CRITICAL') DEFAULT 'NORMAL' COMMENT '告警级别',
-    anomaly_types JSON COMMENT '异常类型',
-    is_alert_triggered BOOLEAN DEFAULT FALSE COMMENT '是否触发告警',
-    alert_message TEXT COMMENT '告警信息',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
-    INDEX idx_tenant_site (tenant_id, site_id),
-    INDEX idx_equipment_id (equipment_id),
-    INDEX idx_equipment_code (equipment_code),
-    INDEX idx_station_id (station_id),
-    INDEX idx_monitor_time (monitor_time),
-    INDEX idx_equipment_status (equipment_status),
-    INDEX idx_alert_level (alert_level),
-    INDEX idx_is_alert_triggered (is_alert_triggered)
-) COMMENT '设备异常监控表';
 
 -- 库存异常监控表
 CREATE TABLE inventory_alert_monitor (

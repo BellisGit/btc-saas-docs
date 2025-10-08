@@ -296,34 +296,6 @@ CREATE TABLE maintenance_plan_stats (
     FOREIGN KEY (plan_id) REFERENCES maintenance_plan(plan_id)
 ) COMMENT '维护计划执行统计表';
 
--- 设备可靠性统计表
-CREATE TABLE equipment_reliability_stats (
-    stats_id VARCHAR(32) PRIMARY KEY COMMENT '统计ID',
-    equipment_id VARCHAR(32) NOT NULL COMMENT '设备ID',
-    equipment_code VARCHAR(64) COMMENT '设备代码',
-    equipment_name VARCHAR(128) COMMENT '设备名称',
-    stats_period DATE NOT NULL COMMENT '统计周期',
-    operating_hours DECIMAL(10,2) DEFAULT 0 COMMENT '运行小时数',
-    planned_downtime DECIMAL(10,2) DEFAULT 0 COMMENT '计划停机时间',
-    unplanned_downtime DECIMAL(10,2) DEFAULT 0 COMMENT '非计划停机时间',
-    maintenance_hours DECIMAL(10,2) DEFAULT 0 COMMENT '维护小时数',
-    failure_count INT DEFAULT 0 COMMENT '故障次数',
-    maintenance_count INT DEFAULT 0 COMMENT '维护次数',
-    availability DECIMAL(5,2) COMMENT '可用率',
-    reliability DECIMAL(5,2) COMMENT '可靠性',
-    maintainability DECIMAL(5,2) COMMENT '可维护性',
-    mtbf DECIMAL(10,2) COMMENT '平均故障间隔时间',
-    mttr DECIMAL(10,2) COMMENT '平均修复时间',
-    oee DECIMAL(5,2) COMMENT 'OEE',
-    tenant_id VARCHAR(32) COMMENT '租户ID',
-    site_id VARCHAR(32) COMMENT '站点ID',
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_equipment_id (equipment_id),
-    INDEX idx_stats_period (stats_period),
-    INDEX idx_tenant_site (tenant_id, site_id),
-    UNIQUE KEY uk_equipment_period (equipment_id, stats_period)
-) COMMENT '设备可靠性统计表';
 
 -- ==============================================
 -- 2. 初始化数据
